@@ -1,0 +1,28 @@
+'Pick', 'Seaweed'
+
+Patch ObjectID 1: 30500
+Tile Location 1: 3733,10273,1
+
+Patch ObjectID 2: 30501
+Tile Location 2: 3733,10268,1
+
+Tool leprechaun NpcID: 7757
+Withdraw UltraCompost Widget: 8192019 | Identifier: 1 | opcode: 57 | param0: -1
+Withdraw SuperCompost Widget: 8192018 | Identifier: 1 | opcode: 57 | param0: -1
+Withdraw Compost Widget: 8192017 | Identifier: 1 | opcode: 57 | param0: -1
+Withdraw B'mless bucket Widget: 8192015 | Identifier: 1 | opcode: 57 | param0: -1
+Deposite B'mless bucket Widget: 8257544 | Identifier: 1 | opcode: 57 | param0: -1
+Deposite Bucket Widget: 8257545 | Identifier: 1 | opcode: 57 | param0: -1
+Withdraw Seed Dibber: 8192009 | Identifier: 1 | opcode: 57 | param0: -1
+Deposite Seed Dibber: 8257538 | Identifier: 1 | opcode: 57 | param0: -1
+
+Bottomless compost bucket: 22997
+UltraCompost: 21483
+SuperCompost: 6034
+Compost: 6032
+GiantSeaweed: 21504
+
+Planted Seaweed ID: 30491 - full grown
+Empty Seaweed Patch ID: 30483
+
+Brut-Farming Plant varbit: 9609 - no seed dibber needed

@@ -1,0 +1,51 @@
+import type { PriorityOverrides } from './loot-priority.js';
+
+const ItemID = net.runelite.api.ItemID;
+
+export const runes: number[] = [
+	ItemID.AIR_RUNE,
+	ItemID.WATER_RUNE,
+	ItemID.EARTH_RUNE,
+	ItemID.FIRE_RUNE,
+	ItemID.MIND_RUNE,
+	ItemID.BODY_RUNE,
+	ItemID.COSMIC_RUNE,
+	ItemID.CHAOS_RUNE,
+	ItemID.NATURE_RUNE,
+	ItemID.LAW_RUNE,
+	ItemID.DEATH_RUNE,
+	ItemID.BLOOD_RUNE,
+	ItemID.SOUL_RUNE,
+	ItemID.ASTRAL_RUNE,
+	ItemID.WRATH_RUNE,
+	ItemID.MIST_RUNE,
+	ItemID.DUST_RUNE,
+	ItemID.MUD_RUNE,
+	ItemID.SMOKE_RUNE,
+	ItemID.STEAM_RUNE,
+	ItemID.LAVA_RUNE,
+];
+
+export const runesPriorityOverrides: PriorityOverrides = {
+	[ItemID.AIR_RUNE]: 9,
+	[ItemID.WATER_RUNE]: 9,
+	[ItemID.EARTH_RUNE]: 9,
+	[ItemID.FIRE_RUNE]: 9,
+	[ItemID.MIND_RUNE]: 10,
+	[ItemID.BODY_RUNE]: 10,
+	[ItemID.COSMIC_RUNE]: 8,
+	[ItemID.CHAOS_RUNE]: 7,
+	[ItemID.NATURE_RUNE]: 5,
+	[ItemID.LAW_RUNE]: 6,
+	[ItemID.DEATH_RUNE]: 3,
+	[ItemID.BLOOD_RUNE]: 2,
+	[ItemID.SOUL_RUNE]: 2,
+	[ItemID.ASTRAL_RUNE]: 2,
+	[ItemID.WRATH_RUNE]: 1,
+	[ItemID.MIST_RUNE]: 5,
+	[ItemID.DUST_RUNE]: 5,
+	[ItemID.MUD_RUNE]: 5,
+	[ItemID.SMOKE_RUNE]: 5,
+	[ItemID.STEAM_RUNE]: 5,
+	[ItemID.LAVA_RUNE]: 5,
+};

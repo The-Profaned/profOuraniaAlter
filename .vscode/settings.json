@@ -19,6 +19,8 @@
 	"files.exclude": {
 		"**/node_modules": true,
 		"**/.git": true,
+		"src/example-state-progression": true,
+		"src/example-ui-components": true,
 		// "**/.vscode": true,
 		".gitignore": true,
 		".editorconfig": true,

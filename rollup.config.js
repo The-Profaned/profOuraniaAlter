@@ -49,7 +49,19 @@ function removeHalfTreeshaken() {
 /**
  * @type {import('rollup').RollupOptions}
  */
-export default glob.sync(osPath.join('src', '*', 'index.ts')).map((file) => {
+const EXCLUDED_BUILD_ENTRIES = new Set([
+	'example-state-progression',
+	'example-ui-components',
+]);
+
+const inputFiles = glob
+	.sync(osPath.join('src', '*', 'index.ts'))
+	.filter((file) => {
+		const entryName = path.basename(path.dirname(file));
+		return !EXCLUDED_BUILD_ENTRIES.has(entryName);
+	});
+
+export default inputFiles.map((file) => {
 	return {
 		input: file,
 		output: {

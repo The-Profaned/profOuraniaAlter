@@ -1,0 +1,10 @@
+{
+  "name": "@prof/imports",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared reusable BotMaker utility functions for all script workspaces",
+  "exports": {
+    "./*.js": "./*.ts"
+  }
+}
