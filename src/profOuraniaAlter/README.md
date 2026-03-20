@@ -21,7 +21,6 @@
 - `State Manager/script-state.ts`
 - `State Manager/logging.ts`
 - `State Manager/constants.ts`
-- `State Manager/ourania-config.ts`
 - `State Manager/state-manager.ts`
 - `State Manager/State/*.ts` individual state handlers
 
