@@ -27,7 +27,7 @@ export const state: OuraniaAlterScriptState = {
 	mainState: MainStates.TRAVEL_TO_OURANIA_ALTAR,
 	scriptInitalized: false,
 	scriptName: SCRIPT_NAME,
-	uiCompleted: true,
+	uiCompleted: false,
 	timeout: 0,
 	gameTick: 0,
 	subState: DEFAULT_STATE,
