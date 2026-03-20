@@ -2,12 +2,12 @@ import type { State } from '../../imports/types.js';
 import { SCRIPT_NAME, DEFAULT_STATE } from './constants.js';
 
 export enum MainStates {
-	INITIALIZING = 'INITIALIZING',
 	TRAVEL_TO_OURANIA_ALTAR = 'TRAVEL_TO_OURANIA_ALTAR',
+	INTERACT_WITH_OURANIA_ALTAR = 'INTERACT_WITH_OURANIA_ALTAR',
 	TRAVEL_TO_PRAYER_ALTAR = 'TRAVEL_TO_PRAYER_ALTAR',
 	SWAP_MAGE_BOOK = 'SWAP_MAGE_BOOK',
 	USE_PRAYER_ALTAR = 'USE_PRAYER_ALTAR',
-	TRAVEL_DOWN_LADDER = 'TRAVEL_DOWN_LADDER',
+	TRAVEL_TO_BANK = 'TRAVEL_TO_BANK',
 	INTERACT_WITH_BANK = 'INTERACT_WITH_BANK',
 	IDLE = 'IDLE',
 }
@@ -16,7 +16,6 @@ export type OuraniaAlterScriptState = State & {
 	mainState: MainStates;
 	lastLoggedMainState: MainStates | null;
 	workflowStep: number;
-	isSetupComplete: boolean;
 };
 
 export const state: OuraniaAlterScriptState = {
@@ -25,7 +24,7 @@ export const state: OuraniaAlterScriptState = {
 	failureCounts: {},
 	failureOrigin: '',
 	lastFailureKey: '',
-	mainState: MainStates.INITIALIZING,
+	mainState: MainStates.TRAVEL_TO_OURANIA_ALTAR,
 	scriptInitalized: false,
 	scriptName: SCRIPT_NAME,
 	uiCompleted: true,
@@ -34,5 +33,4 @@ export const state: OuraniaAlterScriptState = {
 	subState: DEFAULT_STATE,
 	lastLoggedMainState: null,
 	workflowStep: 0,
-	isSetupComplete: false,
 };

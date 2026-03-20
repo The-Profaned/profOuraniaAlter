@@ -1,11 +1,11 @@
 import { logState } from './logging.js';
 import { state, MainStates } from './script-state.js';
-import { Initializing } from './State/initializing.js';
 import { TravelToOuraniaAltar } from './State/travel-to-ourania-altar.js';
+import { InteractWithOuraniaAltar } from './State/interact-with-ourania-altar.js';
 import { TravelToPrayerAltar } from './State/travel-to-prayer-altar.js';
 import { SwapMageBook } from './State/swap-mage-book.js';
 import { UsePrayerAltar } from './State/use-prayer-altar.js';
-import { TravelDownLadder } from './State/travel-down-ladder.js';
+import { TravelToBank } from './State/travel-to-bank.js';
 import { InteractWithBank } from './State/interact-with-bank.js';
 
 export * from './script-state.js';
@@ -17,12 +17,12 @@ export const stateManager = (): void => {
 	}
 
 	switch (state.mainState) {
-		case MainStates.INITIALIZING: {
-			Initializing();
-			break;
-		}
 		case MainStates.TRAVEL_TO_OURANIA_ALTAR: {
 			TravelToOuraniaAltar();
+			break;
+		}
+		case MainStates.INTERACT_WITH_OURANIA_ALTAR: {
+			InteractWithOuraniaAltar();
 			break;
 		}
 		case MainStates.TRAVEL_TO_PRAYER_ALTAR: {
@@ -37,8 +37,8 @@ export const stateManager = (): void => {
 			UsePrayerAltar();
 			break;
 		}
-		case MainStates.TRAVEL_DOWN_LADDER: {
-			TravelDownLadder();
+		case MainStates.TRAVEL_TO_BANK: {
+			TravelToBank();
 			break;
 		}
 		case MainStates.INTERACT_WITH_BANK: {

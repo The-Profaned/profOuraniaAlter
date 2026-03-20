@@ -5,5 +5,5 @@ export const UsePrayerAltar = (): void => {
 	logState('Using prayer altar.');
 
 	// TODO: Add prayer altar interaction logic.
-	state.mainState = MainStates.TRAVEL_DOWN_LADDER;
+	state.mainState = MainStates.TRAVEL_TO_BANK;
 };

@@ -1,9 +1,9 @@
 import { MainStates, state } from '../script-state.js';
 import { logState } from '../logging.js';
 
-export const TravelDownLadder = (): void => {
-	logState('Traveling down ladder.');
+export const TravelToBank = (): void => {
+	logState('Traveling to bank.');
 
-	// TODO: Add ladder interaction and movement logic.
+	// TODO: Add movement logic from altar area to bank area.
 	state.mainState = MainStates.INTERACT_WITH_BANK;
 };
