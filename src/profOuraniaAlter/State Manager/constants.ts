@@ -74,3 +74,19 @@ export const INTERACTIONS = {
 // If current run energy is at or above this %, route directly to bank.
 // If below this %, route to prayer altar first.
 export const RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD: number = 50;
+
+// VarBit for Kingdom Divided quest completion (required for Vile Vigour)
+export const KINGDOM_DIVIDED_VARBIT: number = 0; // THIS NUMBER IS A PLACEHOLDER
+
+// Runecrafting pouch level requirements
+export const RUNECRAFTING_POUCH_LEVELS = {
+	SMALL: 1,
+	MEDIUM: 25,
+	LARGE: 50,
+	GIANT: 75,
+	COLOSSAL: 25,
+} as const;
+
+// ============ TEST MODE (EASY TO DELETE) ============
+export const TEST_MODE_ENABLED: boolean = true;
+// ====================================================
