@@ -1,12 +1,18 @@
 import { createPanel } from '../../../imports/ui-helper-functions.js';
 import {
+	DESERT_AMULET_VARBIT,
 	KINGDOM_DIVIDED_VARBIT,
 	RUNECRAFTING_POUCH_LEVELS,
 	TEST_MODE_ENABLED,
 } from '../../State Manager/constants.js';
+import {
+	state,
+	type RunRestoreOption,
+} from '../../State Manager/script-state.js';
 
 export const createBehaviourTab = (
 	onPouchVisibilityChange?: (showPouchSelection: boolean) => void,
+	onRunRestoreOptionChange?: (runRestoreOption: RunRestoreOption) => void,
 ): javax.swing.JPanel => {
 	const panel = createPanel(
 		'BoxLayout',
@@ -22,22 +28,57 @@ export const createBehaviourTab = (
 	// Build dropdown options conditionally based on Kingdom Divided completion
 	let hasKingdomDivided: boolean =
 		client.getVarbitValue(KINGDOM_DIVIDED_VARBIT) > 0;
+	let hasDesertAmulet: boolean =
+		client.getVarbitValue(DESERT_AMULET_VARBIT) > 0;
 
-	// TEST MODE: Override with random varbit state
+	// TEST MODE: Override with random varbit states
 	if (TEST_MODE_ENABLED) {
 		hasKingdomDivided = Math.random() > 0.5;
+		hasDesertAmulet = Math.random() > 0.5;
 		log.print(
 			`[TEST MODE] Kingdom Divided varbit set to: ${hasKingdomDivided}`,
 		);
+		log.print(
+			`[TEST MODE] Desert Amulet varbit set to: ${hasDesertAmulet}`,
+		);
 	}
 
-	const runRestoreOptions = hasKingdomDivided
-		? ['No Restore', 'Stamina Potions', 'Vile Vigour']
-		: ['No Restore', 'Stamina Potions'];
+	const runRestoreOptions: string[] = [
+		'No Restore',
+		'Stamina Potions',
+		'PoH',
+	];
 
-	row1.add(
-		new javax.swing.JComboBox(runRestoreOptions as unknown as string[]),
+	if (hasKingdomDivided) {
+		runRestoreOptions.push('Vile Vigour');
+	}
+
+	if (hasDesertAmulet) {
+		runRestoreOptions.push('Desert Amulet');
+	}
+
+	const runRestoreSelect = new javax.swing.JComboBox(
+		runRestoreOptions as unknown as string[],
 	);
+	const hasSavedRunRestoreOption = runRestoreOptions.includes(
+		state.behaviour.runRestoreOption,
+	);
+	runRestoreSelect.setSelectedItem(
+		hasSavedRunRestoreOption
+			? state.behaviour.runRestoreOption
+			: runRestoreOptions[0],
+	);
+	state.behaviour.runRestoreOption = String(
+		runRestoreSelect.getSelectedItem(),
+	) as RunRestoreOption;
+	onRunRestoreOptionChange?.(state.behaviour.runRestoreOption);
+	runRestoreSelect.addActionListener(() => {
+		state.behaviour.runRestoreOption = String(
+			runRestoreSelect.getSelectedItem(),
+		) as RunRestoreOption;
+		onRunRestoreOptionChange?.(state.behaviour.runRestoreOption);
+	});
+	row1.add(runRestoreSelect);
 
 	const colossalRow = new javax.swing.JPanel(
 		new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 2),
@@ -62,9 +103,13 @@ export const createBehaviourTab = (
 
 	const colossalPouchCheck = new javax.swing.JCheckBox(
 		'Colossal Pouch',
-		canUseColossal,
+		false,
+	);
+	colossalPouchCheck.setSelected(
+		canUseColossal && state.behaviour.useColossalPouch,
 	);
 	colossalPouchCheck.setEnabled(canUseColossal);
+	state.behaviour.useColossalPouch = colossalPouchCheck.isSelected();
 	colossalRow.add(colossalPouchCheck);
 
 	const pouchSelectionPanel = new javax.swing.JPanel(
@@ -79,19 +124,48 @@ export const createBehaviourTab = (
 	pouchSelectionPanel.setBorder(pouchBorder);
 
 	// Create pouch checkboxes with level-based availability
-	const smallCheck = new javax.swing.JCheckBox('Small', false);
+	const smallCheck = new javax.swing.JCheckBox(
+		'Small',
+		state.behaviour.useSmallPouch,
+	);
 	smallCheck.setEnabled(runecraftingLevel >= RUNECRAFTING_POUCH_LEVELS.SMALL);
+	if (!smallCheck.isEnabled()) state.behaviour.useSmallPouch = false;
 
-	const mediumCheck = new javax.swing.JCheckBox('Medium', false);
+	const mediumCheck = new javax.swing.JCheckBox(
+		'Medium',
+		state.behaviour.useMediumPouch,
+	);
 	mediumCheck.setEnabled(
 		runecraftingLevel >= RUNECRAFTING_POUCH_LEVELS.MEDIUM,
 	);
+	if (!mediumCheck.isEnabled()) state.behaviour.useMediumPouch = false;
 
-	const largeCheck = new javax.swing.JCheckBox('Large', false);
+	const largeCheck = new javax.swing.JCheckBox(
+		'Large',
+		state.behaviour.useLargePouch,
+	);
 	largeCheck.setEnabled(runecraftingLevel >= RUNECRAFTING_POUCH_LEVELS.LARGE);
+	if (!largeCheck.isEnabled()) state.behaviour.useLargePouch = false;
 
-	const giantCheck = new javax.swing.JCheckBox('Giant', false);
+	const giantCheck = new javax.swing.JCheckBox(
+		'Giant',
+		state.behaviour.useGiantPouch,
+	);
 	giantCheck.setEnabled(runecraftingLevel >= RUNECRAFTING_POUCH_LEVELS.GIANT);
+	if (!giantCheck.isEnabled()) state.behaviour.useGiantPouch = false;
+
+	smallCheck.addActionListener(() => {
+		state.behaviour.useSmallPouch = smallCheck.isSelected();
+	});
+	mediumCheck.addActionListener(() => {
+		state.behaviour.useMediumPouch = mediumCheck.isSelected();
+	});
+	largeCheck.addActionListener(() => {
+		state.behaviour.useLargePouch = largeCheck.isSelected();
+	});
+	giantCheck.addActionListener(() => {
+		state.behaviour.useGiantPouch = giantCheck.isSelected();
+	});
 
 	const setPouchOptionsEnabled = (enabled: boolean): void => {
 		smallCheck.setEnabled(
@@ -118,17 +192,33 @@ export const createBehaviourTab = (
 	pouchSelectionPanel.setVisible(showPouchSelectionByDefault);
 	setPouchOptionsEnabled(!colossalPouchCheck.isSelected());
 
+	if (!colossalPouchCheck.isSelected()) {
+		smallCheck.setSelected(state.behaviour.useSmallPouch);
+		mediumCheck.setSelected(state.behaviour.useMediumPouch);
+		largeCheck.setSelected(state.behaviour.useLargePouch);
+		giantCheck.setSelected(state.behaviour.useGiantPouch);
+	}
+
 	colossalPouchCheck.addActionListener(() => {
 		const useColossal = colossalPouchCheck.isSelected();
 		const showPouchSelection = !useColossal;
+		state.behaviour.useColossalPouch = useColossal;
 
 		if (useColossal) {
 			smallCheck.setSelected(false);
 			mediumCheck.setSelected(false);
 			largeCheck.setSelected(false);
 			giantCheck.setSelected(false);
+			state.behaviour.useSmallPouch = false;
+			state.behaviour.useMediumPouch = false;
+			state.behaviour.useLargePouch = false;
+			state.behaviour.useGiantPouch = false;
 			setPouchOptionsEnabled(false);
 		} else {
+			smallCheck.setSelected(state.behaviour.useSmallPouch);
+			mediumCheck.setSelected(state.behaviour.useMediumPouch);
+			largeCheck.setSelected(state.behaviour.useLargePouch);
+			giantCheck.setSelected(state.behaviour.useGiantPouch);
 			setPouchOptionsEnabled(true);
 		}
 

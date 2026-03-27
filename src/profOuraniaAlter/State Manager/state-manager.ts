@@ -3,6 +3,8 @@ import { state, MainStates } from './script-state.js';
 import { TravelToOuraniaAltar } from './State/travel-to-ourania-altar.js';
 import { InteractWithOuraniaAltar } from './State/interact-with-ourania-altar.js';
 import { TravelToPrayerAltar } from './State/travel-to-prayer-altar.js';
+import { TravelToPoh } from './State/travel-to-poh.js';
+import { TravelToDesert } from './State/travel-to-desert.js';
 import { SwapMageBook } from './State/swap-mage-book.js';
 import { UsePrayerAltar } from './State/use-prayer-altar.js';
 import { TravelToBank } from './State/travel-to-bank.js';
@@ -27,6 +29,14 @@ export const stateManager = (): void => {
 		}
 		case MainStates.TRAVEL_TO_PRAYER_ALTAR: {
 			TravelToPrayerAltar();
+			break;
+		}
+		case MainStates.TRAVEL_TO_POH: {
+			TravelToPoh();
+			break;
+		}
+		case MainStates.TRAVEL_TO_DESERT: {
+			TravelToDesert();
 			break;
 		}
 		case MainStates.SWAP_MAGE_BOOK: {

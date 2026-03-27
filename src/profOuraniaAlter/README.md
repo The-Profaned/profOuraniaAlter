@@ -18,6 +18,7 @@
 ## Script structure
 
 - `index.ts` with base imports + lifecycle hooks
+- `SCRIPT_BLUEPRINT.md` visual script blueprint + idea branching board
 - `State Manager/script-state.ts`
 - `State Manager/logging.ts`
 - `State Manager/constants.ts`

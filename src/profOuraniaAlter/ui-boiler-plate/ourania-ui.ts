@@ -11,12 +11,20 @@ import { logOuraniaAlter } from '../State Manager/logging.js';
 let startFrame: javax.swing.JFrame | null = null;
 
 // Tab Sizes
-const SETTINGS_TAB_FRAME_SIZE = new java.awt.Dimension(480, 500);
+const SETTINGS_TAB_FRAME_SIZE_COLLAPSED = new java.awt.Dimension(480, 310);
+const SETTINGS_TAB_FRAME_SIZE_POH_EXPANDED = new java.awt.Dimension(480, 340);
+const SETTINGS_TAB_FRAME_SIZE_RUNE_POUCH_EXPANDED = new java.awt.Dimension(
+	480,
+	355,
+);
+const SETTINGS_TAB_FRAME_SIZE_FULL = new java.awt.Dimension(480, 385);
 const BEHAVIOUR_TAB_FRAME_SIZE_COLLAPSED = new java.awt.Dimension(480, 280);
 const BEHAVIOUR_TAB_FRAME_SIZE_EXPANDED = new java.awt.Dimension(480, 380);
 const INFO_TAB_FRAME_SIZE = new java.awt.Dimension(480, 400);
 
 let showBehaviourPouchSelection = false;
+let showSettingsPohAccess = false;
+let showSettingsRunePouchOptions = false;
 
 const disposeStartFrame = (): void => {
 	if (!startFrame) return;
@@ -39,10 +47,45 @@ const applyIconPathToLabel = (
 	}
 
 	try {
-		const normalizedPath: string = trimmedPath.replaceAll('\\', '/');
-		iconLabel.setText(
-			`<html><img src="file:${normalizedPath}" width="${UI_BRANDING.iconSlotWidth - 6}" height="${UI_BRANDING.iconSlotHeight - 6}" /></html>`,
+		type ScalableImage = {
+			getScaledInstance: (
+				width: number,
+				height: number,
+				hints: number,
+			) => unknown;
+		};
+
+		type IconWithSize = javax.swing.Icon & {
+			getIconWidth: () => number;
+			getIconHeight: () => number;
+			getImage: () => ScalableImage;
+		};
+
+		type SwingWithImageIcon = typeof javax.swing & {
+			ImageIcon: new (source: string | object) => IconWithSize;
+		};
+
+		const swingWithImageIcon = javax.swing as SwingWithImageIcon;
+		const baseIcon = new swingWithImageIcon.ImageIcon(trimmedPath);
+		if (baseIcon.getIconWidth() <= 0 || baseIcon.getIconHeight() <= 0) {
+			iconLabel.setText('ICON');
+			iconLabel.setToolTipText(`Unable to load icon: ${trimmedPath}`);
+			return false;
+		}
+
+		const scaledImage: unknown = baseIcon
+			.getImage()
+			.getScaledInstance(
+				UI_BRANDING.iconSlotWidth - 6,
+				UI_BRANDING.iconSlotHeight - 6,
+				4,
+			);
+		const scaledIcon = new swingWithImageIcon.ImageIcon(
+			scaledImage as object,
 		);
+
+		iconLabel.setIcon(scaledIcon as unknown as javax.swing.Icon);
+		iconLabel.setText('');
 		iconLabel.setToolTipText(trimmedPath);
 		return true;
 	} catch {
@@ -60,13 +103,25 @@ const getFrameSizeForTabIndex = (tabIndex: number): java.awt.Dimension => {
 				: BEHAVIOUR_TAB_FRAME_SIZE_COLLAPSED;
 		}
 		case 1: {
-			return SETTINGS_TAB_FRAME_SIZE;
+			if (showSettingsPohAccess && showSettingsRunePouchOptions) {
+				return SETTINGS_TAB_FRAME_SIZE_FULL;
+			}
+
+			if (showSettingsRunePouchOptions) {
+				return SETTINGS_TAB_FRAME_SIZE_RUNE_POUCH_EXPANDED;
+			}
+
+			if (showSettingsPohAccess) {
+				return SETTINGS_TAB_FRAME_SIZE_POH_EXPANDED;
+			}
+
+			return SETTINGS_TAB_FRAME_SIZE_COLLAPSED;
 		}
 		case 2: {
 			return INFO_TAB_FRAME_SIZE;
 		}
 		default: {
-			return SETTINGS_TAB_FRAME_SIZE;
+			return SETTINGS_TAB_FRAME_SIZE_COLLAPSED;
 		}
 	}
 };
@@ -157,16 +212,29 @@ const createStartFrame = (): javax.swing.JFrame => {
 	headerPanel.add(headerIconSlot.panel, java.awt.BorderLayout.EAST);
 
 	const tabbedPane = new javax.swing.JTabbedPane();
+	const settingsTab = createSettingsTab((layoutState) => {
+		showSettingsPohAccess = layoutState.showPohAccess;
+		showSettingsRunePouchOptions = layoutState.showRunePouchOptions;
+
+		if (tabbedPane.getSelectedIndex() === 1) {
+			applyFrameSizeForTab(frame, 1);
+		}
+	});
 	tabbedPane.addTab(
 		'Behaviour',
-		createBehaviourTab((showPouchSelection) => {
-			showBehaviourPouchSelection = showPouchSelection;
-			if (tabbedPane.getSelectedIndex() === 0) {
-				applyFrameSizeForTab(frame, 0);
-			}
-		}),
+		createBehaviourTab(
+			(showPouchSelection) => {
+				showBehaviourPouchSelection = showPouchSelection;
+				if (tabbedPane.getSelectedIndex() === 0) {
+					applyFrameSizeForTab(frame, 0);
+				}
+			},
+			(runRestoreOption) => {
+				settingsTab.setPohAccessVisible(runRestoreOption === 'PoH');
+			},
+		),
 	);
-	tabbedPane.addTab('Settings', createSettingsTab());
+	tabbedPane.addTab('Settings', settingsTab.panel);
 	tabbedPane.addTab('Info', createInfoTab());
 	tabbedPane.addChangeListener(() => {
 		applyFrameSizeForTab(frame, tabbedPane.getSelectedIndex());
