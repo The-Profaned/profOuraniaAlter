@@ -34,6 +34,7 @@ export enum MainStates {
 	USE_PRAYER_ALTAR = 'USE_PRAYER_ALTAR',
 	TRAVEL_TO_BANK = 'TRAVEL_TO_BANK',
 	INTERACT_WITH_BANK = 'INTERACT_WITH_BANK',
+	REPAIR_POUCHES = 'REPAIR_POUCHES',
 	IDLE = 'IDLE',
 }
 
@@ -62,6 +63,12 @@ export type OuraniaAlterScriptState = State & {
 		useMediumPouch: boolean;
 		useLargePouch: boolean;
 		useGiantPouch: boolean;
+	};
+	pouchState: {
+		/** True when at least one enabled, degradable pouch is degraded and needs repair. */
+		needsRepair: boolean;
+		/** The state to return to after REPAIR_POUCHES completes. */
+		returnState: MainStates;
 	};
 };
 
@@ -101,5 +108,9 @@ export const state: OuraniaAlterScriptState = {
 		useMediumPouch: false,
 		useLargePouch: false,
 		useGiantPouch: false,
+	},
+	pouchState: {
+		needsRepair: false,
+		returnState: MainStates.INTERACT_WITH_BANK,
 	},
 };

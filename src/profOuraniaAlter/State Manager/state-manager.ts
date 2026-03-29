@@ -11,6 +11,7 @@ import { SwapMageBook } from './State/swap-mage-book.js';
 import { UsePrayerAltar } from './State/use-prayer-altar.js';
 import { TravelToBank } from './State/travel-to-bank.js';
 import { InteractWithBank } from './State/interact-with-bank.js';
+import { RepairPouches } from './State/repair-pouches.js';
 
 const runScriptStartSync: () => void = determineScriptStartLocationState;
 
@@ -59,6 +60,10 @@ export const stateManager = (): void => {
 		}
 		case MainStates.INTERACT_WITH_BANK: {
 			InteractWithBank();
+			break;
+		}
+		case MainStates.REPAIR_POUCHES: {
+			RepairPouches();
 			break;
 		}
 		case MainStates.IDLE: {
