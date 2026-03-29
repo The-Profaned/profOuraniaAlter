@@ -41,6 +41,10 @@ export type OuraniaAlterScriptState = State & {
 	mainState: MainStates;
 	lastLoggedMainState: MainStates | null;
 	workflowStep: number;
+	debugTab: {
+		forcedMainState: MainStates;
+		forceStateOnStart: boolean;
+	};
 	settings: {
 		runesForBanking: RuneOption;
 		pohAccessOption: PohAccessOption;
@@ -76,6 +80,10 @@ export const state: OuraniaAlterScriptState = {
 	subState: DEFAULT_STATE,
 	lastLoggedMainState: null,
 	workflowStep: 0,
+	debugTab: {
+		forcedMainState: MainStates.TRAVEL_TO_OURANIA_ALTAR,
+		forceStateOnStart: true,
+	},
 	settings: {
 		runesForBanking: 'Air',
 		pohAccessOption: 'Tablet',

@@ -1,6 +1,9 @@
 export const SCRIPT_NAME: string = 'profOuraniaAlter';
 export const DEFAULT_STATE: string = 'TRAVEL_TO_OURANIA_ALTAR';
 
+// Set to false to completely hide the Debug tab and re-enable normal start sync.
+export const LOAD_DEBUG_UI_TAB: boolean = true;
+
 export const OURANIA_DUNGEON_REGION_ID: number = 12119;
 
 const TARGETS = {
