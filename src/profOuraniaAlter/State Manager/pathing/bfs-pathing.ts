@@ -1,5 +1,3 @@
-import { drawRoutePath } from '../../../imports/ui-functions.js';
-
 export type Tile = {
 	x: number;
 	y: number;
@@ -14,7 +12,9 @@ type BfsCache = {
 
 export type BfsRouteState = {
 	cachedRoute: BfsCache | null;
-	lastIssuedWaypointKey: string;
+	destinationTile: Tile | null;
+	lastClickedDestination: Tile | null;
+	clickIssued: boolean;
 };
 
 export type WalkRouteWithBfsOptions = {
@@ -22,14 +22,12 @@ export type WalkRouteWithBfsOptions = {
 	goalCenter: Tile;
 	isGoalTile: (tile: Tile) => boolean;
 	currentTick: number;
-	onRouteBuilt?: (pathLength: number, anchorLength: number) => void;
+	onRouteBuilt?: () => void;
 	onRouteFailed?: () => void;
-	onWaypointIssued?: (waypoint: Tile) => void;
+	onDestinationSet?: (tile: Tile) => void;
 };
 
 const RECOMPUTE_INTERVAL_TICKS = 8;
-const WAYPOINT_DISTANCE_STEP = 7;
-const WAYPOINT_REACHED_DISTANCE = 2;
 const PATH_MAX_EXPANSIONS = 5000;
 
 const toTileKey = (tile: Tile): string => `${tile.x},${tile.y},${tile.plane}`;
@@ -37,14 +35,11 @@ const toTileKey = (tile: Tile): string => `${tile.x},${tile.y},${tile.plane}`;
 export const toWorldPoint = (tile: Tile): net.runelite.api.coords.WorldPoint =>
 	new net.runelite.api.coords.WorldPoint(tile.x, tile.y, tile.plane);
 
-export const toWorldPoints = (
-	tiles: Tile[],
-): net.runelite.api.coords.WorldPoint[] =>
-	tiles.map((tile) => toWorldPoint(tile));
-
 export const createBfsRouteState = (): BfsRouteState => ({
 	cachedRoute: null,
-	lastIssuedWaypointKey: '',
+	destinationTile: null,
+	lastClickedDestination: null,
+	clickIssued: false,
 });
 
 const getPlayerTile = (): Tile | null => {
@@ -202,43 +197,6 @@ const reconstructPath = (
 	return path;
 };
 
-const compressPathToAnchors = (path: Tile[]): Tile[] => {
-	if (path.length <= 2) return [...path];
-
-	const anchors: Tile[] = [path[0]];
-	let lastDirection: [number, number] | null = null;
-	let lastAnchorIndex = 0;
-
-	for (let index = 1; index < path.length; index++) {
-		const previous = path[index - 1];
-		const current = path[index];
-		const direction: [number, number] = [
-			Math.sign(current.x - previous.x),
-			Math.sign(current.y - previous.y),
-		];
-
-		const directionChanged =
-			lastDirection !== null &&
-			(direction[0] !== lastDirection[0] ||
-				direction[1] !== lastDirection[1]);
-		const distanceFromAnchor =
-			Math.max(
-				Math.abs(current.x - path[lastAnchorIndex].x),
-				Math.abs(current.y - path[lastAnchorIndex].y),
-			) >= WAYPOINT_DISTANCE_STEP;
-		const isLastTile = index === path.length - 1;
-
-		if (directionChanged || distanceFromAnchor || isLastTile) {
-			anchors.push(current);
-			lastAnchorIndex = index;
-		}
-
-		lastDirection = direction;
-	}
-
-	return anchors;
-};
-
 const findBfsPath = (
 	startTile: Tile,
 	goalCenter: Tile,
@@ -292,20 +250,6 @@ const findBfsPath = (
 	return reconstructPath(parents, endTile, tileByKey);
 };
 
-const getNextAnchor = (anchors: Tile[], playerTile: Tile): Tile | null => {
-	for (const anchor of anchors) {
-		const distance = Math.max(
-			Math.abs(anchor.x - playerTile.x),
-			Math.abs(anchor.y - playerTile.y),
-		);
-		if (distance > WAYPOINT_REACHED_DISTANCE) {
-			return anchor;
-		}
-	}
-
-	return null;
-};
-
 const shouldRecomputeRoute = (
 	routeState: BfsRouteState,
 	playerTile: Tile,
@@ -332,7 +276,9 @@ const shouldRecomputeRoute = (
 
 const resetRouteState = (routeState: BfsRouteState): void => {
 	routeState.cachedRoute = null;
-	routeState.lastIssuedWaypointKey = '';
+	routeState.destinationTile = null;
+	routeState.lastClickedDestination = null;
+	routeState.clickIssued = false;
 };
 
 export const walkRouteWithBfs = (options: WalkRouteWithBfsOptions): boolean => {
@@ -361,38 +307,47 @@ export const walkRouteWithBfs = (options: WalkRouteWithBfsOptions): boolean => {
 			return false;
 		}
 
-		const anchors = compressPathToAnchors(path);
+		const destinationTile = options.goalCenter;
 		options.routeState.cachedRoute = {
-			anchors,
+			anchors: path,
 			path,
 			computedAtTick: options.currentTick,
 		};
-		options.onRouteBuilt?.(path.length, anchors.length);
+		options.routeState.destinationTile = destinationTile;
+
+		// Only reset clickIssued if destination actually changed
+		const destinationChanged =
+			!options.routeState.lastClickedDestination ||
+			destinationTile?.x !==
+				options.routeState.lastClickedDestination.x ||
+			destinationTile?.y !==
+				options.routeState.lastClickedDestination.y ||
+			destinationTile?.plane !==
+				options.routeState.lastClickedDestination.plane;
+
+		if (destinationChanged) {
+			options.routeState.clickIssued = false;
+		}
 	}
 
-	if (!options.routeState.cachedRoute) return false;
+	if (
+		!options.routeState.cachedRoute ||
+		!options.routeState.destinationTile
+	) {
+		return false;
+	}
 
-	const nextAnchor = getNextAnchor(
-		options.routeState.cachedRoute.anchors,
-		playerTile,
-	);
-	if (!nextAnchor) return false;
-
-	const waypointKey = toTileKey(nextAnchor);
-	if (waypointKey !== options.routeState.lastIssuedWaypointKey) {
-		bot.walking.walkToTrueWorldPoint(nextAnchor.x, nextAnchor.y);
-		options.routeState.lastIssuedWaypointKey = waypointKey;
-		options.onWaypointIssued?.(nextAnchor);
+	if (!options.routeState.clickIssued) {
+		bot.walking.walkToTrueWorldPoint(
+			options.routeState.destinationTile.x,
+			options.routeState.destinationTile.y,
+		);
+		options.routeState.clickIssued = true;
+		options.routeState.lastClickedDestination =
+			options.routeState.destinationTile;
+		options.onRouteBuilt?.();
+		options.onDestinationSet?.(options.routeState.destinationTile);
 	}
 
 	return false;
-};
-
-export const drawBfsRoute = (
-	graphics: java.awt.Graphics2D,
-	routeState: BfsRouteState,
-): void => {
-	if (!routeState.cachedRoute || routeState.cachedRoute.path.length < 2)
-		return;
-	drawRoutePath(graphics, toWorldPoints(routeState.cachedRoute.path));
 };

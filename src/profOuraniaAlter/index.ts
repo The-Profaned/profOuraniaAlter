@@ -5,7 +5,6 @@ import {
 	onTemplateEnd,
 	onTemplateStart,
 } from './ui-boiler-plate/ourania-ui.js';
-
 export function onStart(): void {
 	state.gameTick = 0;
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call

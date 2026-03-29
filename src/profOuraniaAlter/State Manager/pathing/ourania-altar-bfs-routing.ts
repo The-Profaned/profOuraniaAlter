@@ -3,7 +3,6 @@ import { state } from '../script-state.js';
 import { logTravelToOuraniaAltar } from '../logging.js';
 import {
 	createBfsRouteState,
-	drawBfsRoute,
 	type Tile,
 	toWorldPoint,
 	walkRouteWithBfs,
@@ -14,20 +13,15 @@ const runWalkRouteWithBfs: (options: {
 	goalCenter: Tile;
 	isGoalTile: (tile: Tile) => boolean;
 	currentTick: number;
-	onRouteBuilt?: (pathLength: number, anchorLength: number) => void;
+	onRouteBuilt?: () => void;
 	onRouteFailed?: () => void;
-	onWaypointIssued?: (waypoint: Tile) => void;
+	onDestinationSet?: (destination: Tile) => void;
 }) => boolean = walkRouteWithBfs;
-
-const runDrawBfsRoute: (
-	graphics: java.awt.Graphics2D,
-	routeState: ReturnType<typeof createBfsRouteState>,
-) => void = drawBfsRoute;
 
 const ouraniaAltarRouteState = createBfsRouteState();
 
 const OURANIA_ALTAR_GOAL_CENTER: Tile = {
-	x: 3060,
+	x: 3058,
 	y: 5579,
 	plane: 0,
 };
@@ -46,21 +40,12 @@ export const walkToOuraniaAltarWithBfs = (): boolean => {
 				'BFS pathing failed to find route to Ourania altar area this tick.',
 			);
 		},
-		onRouteBuilt: (pathLength: number, anchorLength: number) => {
+		onDestinationSet: (destination: Tile) => {
 			logTravelToOuraniaAltar(
-				`BFS route built with ${pathLength} tiles and ${anchorLength} anchor points.`,
-			);
-		},
-		onWaypointIssued: (waypoint: Tile) => {
-			logTravelToOuraniaAltar(
-				`Walking to BFS anchor (${waypoint.x}, ${waypoint.y}, ${waypoint.plane}).`,
+				`Traveling to Ourania altar, path set to (${destination.x}, ${destination.y}).`,
 			);
 		},
 	});
 
 	return reachedGoal;
-};
-
-export const drawOuraniaBfsRoute = (graphics: java.awt.Graphics2D): void => {
-	runDrawBfsRoute(graphics, ouraniaAltarRouteState);
 };
