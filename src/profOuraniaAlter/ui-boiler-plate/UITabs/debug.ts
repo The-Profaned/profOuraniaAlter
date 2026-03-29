@@ -13,6 +13,7 @@ const STATE_OPTIONS: MainStateType[] = [
 	MainStates.USE_PRAYER_ALTAR,
 	MainStates.TRAVEL_TO_BANK,
 	MainStates.INTERACT_WITH_BANK,
+	MainStates.REPAIR_POUCHES,
 	MainStates.IDLE,
 ];
 

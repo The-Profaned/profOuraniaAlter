@@ -18,6 +18,7 @@ const LOG_COLOR = {
 	USE_PRAYER_ALTAR: SHARED_LOG_COLOR.EMERALD as RGB,
 	TRAVEL_BANK: SHARED_LOG_COLOR.CORAL as RGB,
 	INTERACT_BANK: SHARED_LOG_COLOR.EMERALD as RGB,
+	REPAIR_POUCHES: SHARED_LOG_COLOR.GOLD as RGB,
 	ERROR: SHARED_LOG_COLOR.PINK as RGB,
 	SUCCESS: SHARED_LOG_COLOR.EMERALD as RGB,
 };
@@ -77,6 +78,10 @@ export const logTravelToBank = (message: string): void => {
 
 export const logInteractWithBank = (message: string): void => {
 	logMessage('interact-bank', message, LOG_COLOR.INTERACT_BANK);
+};
+
+export const logRepairPouches = (message: string): void => {
+	logMessage('repair-pouches', message, LOG_COLOR.REPAIR_POUCHES);
 };
 
 export const logError = (message: string): void => {
