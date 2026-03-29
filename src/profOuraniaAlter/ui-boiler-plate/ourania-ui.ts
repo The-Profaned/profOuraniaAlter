@@ -1,12 +1,14 @@
 import { createLabel, createPanel } from '../../imports/ui-helper-functions.js';
 import {
 	createBehaviourTab,
+	createDebugTab,
 	createInfoTab,
 	UI_BRANDING,
 	createSettingsTab,
 } from './UIConfigs/ui.js';
 import { state } from '../State Manager/script-state.js';
 import { logOuraniaAlter } from '../State Manager/logging.js';
+import { LOAD_DEBUG_UI_TAB } from '../State Manager/constants.js';
 
 let startFrame: javax.swing.JFrame | null = null;
 
@@ -20,6 +22,7 @@ const SETTINGS_TAB_FRAME_SIZE_RUNE_POUCH_EXPANDED = new java.awt.Dimension(
 const SETTINGS_TAB_FRAME_SIZE_FULL = new java.awt.Dimension(480, 385);
 const BEHAVIOUR_TAB_FRAME_SIZE_COLLAPSED = new java.awt.Dimension(480, 280);
 const BEHAVIOUR_TAB_FRAME_SIZE_EXPANDED = new java.awt.Dimension(480, 380);
+const DEBUG_TAB_FRAME_SIZE = new java.awt.Dimension(480, 330);
 const INFO_TAB_FRAME_SIZE = new java.awt.Dimension(480, 400);
 
 let showBehaviourPouchSelection = false;
@@ -96,6 +99,9 @@ const applyIconPathToLabel = (
 };
 
 const getFrameSizeForTabIndex = (tabIndex: number): java.awt.Dimension => {
+	const infoTabIndex: number = LOAD_DEBUG_UI_TAB ? 3 : 2;
+	const debugTabIndex: number = 2;
+
 	switch (tabIndex) {
 		case 0: {
 			return showBehaviourPouchSelection
@@ -118,9 +124,28 @@ const getFrameSizeForTabIndex = (tabIndex: number): java.awt.Dimension => {
 			return SETTINGS_TAB_FRAME_SIZE_COLLAPSED;
 		}
 		case 2: {
+			if (LOAD_DEBUG_UI_TAB) {
+				return DEBUG_TAB_FRAME_SIZE;
+			}
+
 			return INFO_TAB_FRAME_SIZE;
 		}
+		case 3: {
+			if (LOAD_DEBUG_UI_TAB) {
+				return INFO_TAB_FRAME_SIZE;
+			}
+
+			return SETTINGS_TAB_FRAME_SIZE_COLLAPSED;
+		}
 		default: {
+			if (tabIndex === debugTabIndex && LOAD_DEBUG_UI_TAB) {
+				return DEBUG_TAB_FRAME_SIZE;
+			}
+
+			if (tabIndex === infoTabIndex) {
+				return INFO_TAB_FRAME_SIZE;
+			}
+
 			return SETTINGS_TAB_FRAME_SIZE_COLLAPSED;
 		}
 	}
@@ -235,6 +260,9 @@ const createStartFrame = (): javax.swing.JFrame => {
 		),
 	);
 	tabbedPane.addTab('Settings', settingsTab.panel);
+	if (LOAD_DEBUG_UI_TAB) {
+		tabbedPane.addTab('Debug', createDebugTab());
+	}
 	tabbedPane.addTab('Info', createInfoTab());
 	tabbedPane.addChangeListener(() => {
 		applyFrameSizeForTab(frame, tabbedPane.getSelectedIndex());
@@ -243,6 +271,14 @@ const createStartFrame = (): javax.swing.JFrame => {
 	const startButton = new javax.swing.JButton('Start Script');
 	startButton.setPreferredSize(new java.awt.Dimension(180, 36));
 	startButton.addActionListener(() => {
+		if (LOAD_DEBUG_UI_TAB && state.debugTab.forceStateOnStart) {
+			state.mainState = state.debugTab.forcedMainState;
+			state.lastLoggedMainState = null;
+			logOuraniaAlter(
+				`Debug start forced state: ${state.debugTab.forcedMainState}`,
+			);
+		}
+
 		state.uiCompleted = true;
 		logOuraniaAlter('UI completed. Starting script logic...');
 		disposeStartFrame();
