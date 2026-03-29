@@ -1,6 +1,8 @@
 export const SCRIPT_NAME: string = 'profOuraniaAlter';
 export const DEFAULT_STATE: string = 'TRAVEL_TO_OURANIA_ALTAR';
 
+export const OURANIA_DUNGEON_REGION_ID: number = 12119;
+
 const TARGETS = {
 	banker: {
 		name: 'Eniola',
@@ -25,7 +27,7 @@ const TARGETS = {
 } as const;
 
 export const WORLD_POINTS = {
-	ouraniaAltar: new net.runelite.api.coords.WorldArea(0, 0, 1, 1, 0),
+	ouraniaAltar: new net.runelite.api.coords.WorldArea(3054, 5573, 13, 12, 0),
 	prayerAltar: {
 		x: 0,
 		y: 0,
@@ -41,7 +43,7 @@ export const WORLD_POINTS = {
 		y: 0,
 		plane: 0,
 	},
-	bankArea: new net.runelite.api.coords.WorldArea(0, 0, 1, 1, 0),
+	bankArea: new net.runelite.api.coords.WorldArea(3010, 5621, 11, 10, 0),
 } as const;
 
 export const OBJECT_IDS = {

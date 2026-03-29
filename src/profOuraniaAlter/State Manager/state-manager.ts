@@ -1,5 +1,6 @@
 import { logState } from './logging.js';
 import { state, MainStates } from './script-state.js';
+import { determineScriptStartLocationState } from './script-start.js';
 import { TravelToOuraniaAltar } from './State/travel-to-ourania-altar.js';
 import { InteractWithOuraniaAltar } from './State/interact-with-ourania-altar.js';
 import { TravelToPrayerAltar } from './State/travel-to-prayer-altar.js';
@@ -10,9 +11,11 @@ import { UsePrayerAltar } from './State/use-prayer-altar.js';
 import { TravelToBank } from './State/travel-to-bank.js';
 import { InteractWithBank } from './State/interact-with-bank.js';
 
-export * from './script-state.js';
+const runScriptStartSync: () => void = determineScriptStartLocationState;
 
 export const stateManager = (): void => {
+	runScriptStartSync();
+
 	if (state.lastLoggedMainState !== state.mainState) {
 		logState(`State changed to: ${state.mainState}`);
 		state.lastLoggedMainState = state.mainState;
