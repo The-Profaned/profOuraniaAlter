@@ -31,21 +31,6 @@ const TARGETS = {
 
 export const WORLD_POINTS = {
 	ouraniaAltar: new net.runelite.api.coords.WorldArea(3054, 5573, 13, 12, 0),
-	prayerAltar: {
-		x: 0,
-		y: 0,
-		plane: 0,
-	},
-	ladderTop: {
-		x: 0,
-		y: 0,
-		plane: 0,
-	},
-	ladderBottom: {
-		x: 0,
-		y: 0,
-		plane: 0,
-	},
 	bankArea: new net.runelite.api.coords.WorldArea(3010, 5621, 11, 10, 0),
 } as const;
 
@@ -93,6 +78,21 @@ export const RUNECRAFTING_POUCH_LEVELS = {
 	LARGE: 50,
 	GIANT: 75,
 	COLOSSAL: 25,
+} as const;
+
+// Runecrafting pouch item IDs (normal + degraded).
+// Small pouch does not degrade.
+export const POUCH_ITEM_IDS = {
+	SMALL: { normal: 5509, degraded: undefined },
+	MEDIUM: { normal: 5510, degraded: 5511 },
+	LARGE: { normal: 5512, degraded: 5513 },
+	GIANT: { normal: 5514, degraded: 5515 },
+	COLOSSAL: { normal: 26784, degraded: 26786 },
+} as const;
+
+// NPC Contact dialog options for pouch repair via Dark Mage
+export const NPC_CONTACT_DIALOG = {
+	repairPouchesOption: 'Can you repair my pouches?',
 } as const;
 
 // ============ TEST MODE (EASY TO DELETE) ============
