@@ -4,6 +4,7 @@ import { NPC_CONTACT_DIALOG } from '../constants.js';
 import {
 	anyPouchDegraded,
 	getDarkMageNpcContactMenuIndex,
+	getNpcContactSecondActionText,
 } from '../pouch-utils.js';
 
 // Widget ID for NPC contact selection window when using Cast NPC Contact
@@ -23,6 +24,11 @@ export const RepairPouches = (): void => {
 	switch (state.workflowStep) {
 		case 0: {
 			logRepairPouches('Reading NPC Contact action 2 before casting.');
+
+			const secondActionText = getNpcContactSecondActionText();
+			logRepairPouches(
+				`NPC Contact action 2 read as: ${secondActionText ?? 'Unavailable'}`,
+			);
 
 			const darkMageMenuIndex = getDarkMageNpcContactMenuIndex();
 			if (darkMageMenuIndex >= 0) {
@@ -92,7 +98,7 @@ export const RepairPouches = (): void => {
 		case 4: {
 			const continued = bot.widgets.handleDialogue([]);
 			if (continued) {
-				logRepairPouches('Handled first NPC Contact continue dialog.');
+				logRepairPouches('Handled second NPC Contact continue dialog.');
 				state.workflowStep = 5;
 			}
 			return;
