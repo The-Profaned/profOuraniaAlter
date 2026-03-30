@@ -1,5 +1,7 @@
 export const SCRIPT_NAME: string = 'profOuraniaAlter';
 export const DEFAULT_STATE: string = 'TRAVEL_TO_OURANIA_ALTAR';
+export const BANK_SUBSTATE_REFILL_RUNES: string = 'REFILL_BANK_RUNES';
+export const BANKING_RUNE_MINIMUM_THRESHOLD: number = 40;
 
 // Set to false to completely hide the Debug tab and re-enable normal start sync.
 export const LOAD_DEBUG_UI_TAB: boolean = true;

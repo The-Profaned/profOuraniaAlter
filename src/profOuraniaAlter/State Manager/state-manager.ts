@@ -12,6 +12,7 @@ import { UsePrayerAltar } from './State/use-prayer-altar.js';
 import { TravelToBank } from './State/travel-to-bank.js';
 import { InteractWithBank } from './State/interact-with-bank.js';
 import { RepairPouches } from './State/repair-pouches.js';
+import { refreshRunePouchRuntime } from './rune-pouch-varbits.js';
 
 const runScriptStartSync: () => void = determineScriptStartLocationState;
 
@@ -19,6 +20,8 @@ export const stateManager = (): void => {
 	if (!LOAD_DEBUG_UI_TAB) {
 		runScriptStartSync();
 	}
+
+	const startingState = state.mainState;
 
 	if (state.lastLoggedMainState !== state.mainState) {
 		logState(`State changed to: ${state.mainState}`);
@@ -69,5 +72,17 @@ export const stateManager = (): void => {
 		case MainStates.IDLE: {
 			return;
 		}
+	}
+
+	const transitionedStates = state.mainState !== startingState;
+	if (
+		transitionedStates &&
+		startingState === MainStates.INTERACT_WITH_OURANIA_ALTAR
+	) {
+		refreshRunePouchRuntime('after-altar-interaction');
+	}
+
+	if (transitionedStates && startingState === MainStates.INTERACT_WITH_BANK) {
+		refreshRunePouchRuntime('after-bank-interaction');
 	}
 };
