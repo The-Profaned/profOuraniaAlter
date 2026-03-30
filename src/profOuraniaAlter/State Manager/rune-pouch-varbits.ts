@@ -8,34 +8,23 @@ import { BANKING_RUNE_MINIMUM_THRESHOLD } from './constants.js';
 
 export type RunePouchSlot = {
 	slot: number;
-	runeVarbit: number;
-	amountVarbit: number;
-	runeId: number;
+	itemId: number;
 	amount: number;
 	runeOption: RuneOption | 'na';
 };
 
-const RUNE_POUCH_SLOT_VARBITS = [
-	{ slot: 1, runeVarbit: 29, amountVarbit: 1624 },
-	{ slot: 2, runeVarbit: 1622, amountVarbit: 1625 },
-	{ slot: 3, runeVarbit: 1623, amountVarbit: 1626 },
-	{ slot: 4, runeVarbit: 14285, amountVarbit: 14286 },
-	{ slot: 5, runeVarbit: 15373, amountVarbit: 15375 },
-	{ slot: 6, runeVarbit: 15374, amountVarbit: 15376 },
-] as const;
-
-// Rune pouch varbit IDs for the Rune_Selection_OPTIONS currently used by the UI.
-const RUNE_ID_TO_OPTION: Record<number, RuneOption> = {
-	1: 'Air',
-	2: 'Water',
-	3: 'Earth',
-	4: 'Fire',
-	5: 'Mind',
-	9: 'Cosmic',
-	11: 'Law',
-	13: 'Soul',
-	14: 'Astral',
-	17: 'Dust',
+// Map from item ID to RuneOption for all supported runes
+const ITEM_ID_TO_RUNE_OPTION: Record<number, RuneOption> = {
+	[net.runelite.api.ItemID.AIR_RUNE]: 'Air',
+	[net.runelite.api.ItemID.WATER_RUNE]: 'Water',
+	[net.runelite.api.ItemID.EARTH_RUNE]: 'Earth',
+	[net.runelite.api.ItemID.FIRE_RUNE]: 'Fire',
+	[net.runelite.api.ItemID.MIND_RUNE]: 'Mind',
+	[net.runelite.api.ItemID.DUST_RUNE]: 'Dust',
+	[net.runelite.api.ItemID.COSMIC_RUNE]: 'Cosmic',
+	[net.runelite.api.ItemID.ASTRAL_RUNE]: 'Astral',
+	[net.runelite.api.ItemID.LAW_RUNE]: 'Law',
+	[net.runelite.api.ItemID.SOUL_RUNE]: 'Soul',
 };
 
 const RUNE_OPTION_TO_ITEM_ID: Record<RuneOption, number> = {
@@ -52,27 +41,39 @@ const RUNE_OPTION_TO_ITEM_ID: Record<RuneOption, number> = {
 };
 
 export const readRunePouchSlots = (slotCount: number): RunePouchSlot[] => {
-	const safeSlotCount = Math.max(
-		0,
-		Math.min(slotCount, RUNE_POUCH_SLOT_VARBITS.length),
+	const pouchContainer = client.getItemContainer(
+		net.runelite.api.widgets.WidgetInfo.RUNE_POUCH_ITEM_CONTAINER,
 	);
 
-	return RUNE_POUCH_SLOT_VARBITS.slice(0, safeSlotCount).map((slotData) => {
-		const runeId = Number(client.getVarbitValue(slotData.runeVarbit) ?? 0);
-		const amount = Number(
-			client.getVarbitValue(slotData.amountVarbit) ?? 0,
-		);
-		const runeOption = RUNE_ID_TO_OPTION[runeId] ?? 'na';
+	if (!pouchContainer) {
+		return [];
+	}
 
-		return {
-			slot: slotData.slot,
-			runeVarbit: slotData.runeVarbit,
-			amountVarbit: slotData.amountVarbit,
-			runeId,
+	const items = pouchContainer.getItems();
+	if (!items) {
+		return [];
+	}
+
+	const safeSlotCount = Math.max(0, Math.min(slotCount, items.length));
+
+	const slots: RunePouchSlot[] = [];
+	for (let slot = 0; slot < safeSlotCount; slot++) {
+		const item = items[slot];
+		if (!item) continue;
+
+		const itemId = item.getId();
+		const amount = item.getQuantity();
+		const runeOption = ITEM_ID_TO_RUNE_OPTION[itemId] ?? 'na';
+
+		slots.push({
+			slot: slot + 1,
+			itemId,
 			amount,
 			runeOption,
-		};
-	});
+		});
+	}
+
+	return slots;
 };
 
 const getConfiguredPouchSlotCount = (): number => {
