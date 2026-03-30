@@ -69,6 +69,28 @@ export type OuraniaAlterScriptState = State & {
 		needsRepair: boolean;
 		/** The state to return to after REPAIR_POUCHES completes. */
 		returnState: MainStates;
+		runePouchRuntime: {
+			slotCount: number;
+			lastUpdatedTick: number;
+			allRunesMatchSelection: boolean;
+			allSlotsHaveQuantity: boolean;
+			readyForConfiguredRunes: boolean;
+			bankingRune: {
+				rune: RuneOption;
+				pouchAmount: number;
+				inventoryAmount: number;
+				totalAmount: number;
+				meetsMinimum: boolean;
+			};
+			slots: {
+				slot: number;
+				expectedRune: RuneSelectionOption;
+				actualRune: RuneSelectionOption;
+				amount: number;
+				runeMatchesSelection: boolean;
+				hasQuantity: boolean;
+			}[];
+		};
 	};
 };
 
@@ -112,5 +134,20 @@ export const state: OuraniaAlterScriptState = {
 	pouchState: {
 		needsRepair: false,
 		returnState: MainStates.INTERACT_WITH_BANK,
+		runePouchRuntime: {
+			slotCount: 0,
+			lastUpdatedTick: 0,
+			allRunesMatchSelection: false,
+			allSlotsHaveQuantity: false,
+			readyForConfiguredRunes: false,
+			bankingRune: {
+				rune: 'Air',
+				pouchAmount: 0,
+				inventoryAmount: 0,
+				totalAmount: 0,
+				meetsMinimum: false,
+			},
+			slots: [],
+		},
 	},
 };
