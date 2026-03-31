@@ -33,13 +33,11 @@ export const createBehaviourTab = (
 
 	// TEST MODE: Override with random varbit states
 	if (TEST_MODE_ENABLED) {
-		hasKingdomDivided = Math.random() > 0.5;
-		hasDesertAmulet = Math.random() > 0.5;
 		log.print(
-			`[TEST MODE] Kingdom Divided varbit set to: ${hasKingdomDivided}`,
+			`[TEST MODE] Kingdom Divided varbit read as: ${hasKingdomDivided}`,
 		);
 		log.print(
-			`[TEST MODE] Desert Amulet varbit set to: ${hasDesertAmulet}`,
+			`[TEST MODE] Desert Amulet varbit read as: ${hasDesertAmulet}`,
 		);
 	}
 
@@ -89,11 +87,10 @@ export const createBehaviourTab = (
 		net.runelite.api.Skill.RUNECRAFT,
 	);
 
-	// TEST MODE: Override with random level (1-99)
+	// TEST MODE: keep logging only; do not override actual player level.
 	if (TEST_MODE_ENABLED) {
-		runecraftingLevel = Math.floor(Math.random() * 99) + 1;
 		log.print(
-			`[TEST MODE] Runecrafting level set to: ${runecraftingLevel}`,
+			`[TEST MODE] Runecrafting level read as: ${runecraftingLevel}`,
 		);
 	}
 
