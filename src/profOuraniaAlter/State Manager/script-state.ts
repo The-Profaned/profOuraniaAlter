@@ -24,6 +24,20 @@ export type RunRestoreOption =
 
 export type PohAccessOption = 'Tablet' | 'Construction Cape' | 'Max Cape';
 
+export type StandardPouchKey = 'SMALL' | 'MEDIUM' | 'LARGE' | 'GIANT';
+
+export type PouchKey = StandardPouchKey | 'COLOSSAL';
+
+export type AltarPlanMode = 'NONE' | 'COLOSSAL_ONLY' | 'STANDARD';
+
+export type AltarQueuedActionType = 'EMPTY_POUCH' | 'CRAFT_ALTAR';
+
+export type AltarQueuedAction = {
+	executeTick: number;
+	actionType: AltarQueuedActionType;
+	pouchKey: PouchKey | null;
+};
+
 export enum MainStates {
 	TRAVEL_TO_OURANIA_ALTAR = 'TRAVEL_TO_OURANIA_ALTAR',
 	INTERACT_WITH_OURANIA_ALTAR = 'INTERACT_WITH_OURANIA_ALTAR',
@@ -70,6 +84,18 @@ export type OuraniaAlterScriptState = State & {
 		/** The state to return to after REPAIR_POUCHES completes. */
 		returnState: MainStates;
 	};
+	altarState: {
+		configSignature: string;
+		mode: AltarPlanMode;
+		remainingStandardPouches: StandardPouchKey[];
+		currentBatch: StandardPouchKey[];
+		currentPouchIndex: number;
+		queuedActions: AltarQueuedAction[];
+		awaitingCraftVerification: boolean;
+		lastRunecraftXp: number;
+		lastQueuedCraftTick: number;
+		craftVerificationRetries: number;
+	};
 };
 
 export const state: OuraniaAlterScriptState = {
@@ -112,5 +138,17 @@ export const state: OuraniaAlterScriptState = {
 	pouchState: {
 		needsRepair: false,
 		returnState: MainStates.INTERACT_WITH_BANK,
+	},
+	altarState: {
+		configSignature: '',
+		mode: 'NONE',
+		remainingStandardPouches: [],
+		currentBatch: [],
+		currentPouchIndex: 0,
+		queuedActions: [],
+		awaitingCraftVerification: false,
+		lastRunecraftXp: 0,
+		lastQueuedCraftTick: -1,
+		craftVerificationRetries: 0,
 	},
 };
