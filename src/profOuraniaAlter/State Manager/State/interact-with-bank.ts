@@ -25,7 +25,6 @@ let hasLoggedOpeningBank = false;
 let hasDepositedInventoryAtBank = false;
 let colossalPouchTrackedFill = 0;
 let preFillEssenceCount: number | null = null;
-
 let hasDonePostPouchFillWithdraw = false;
 
 const resetBankingTracking = (): void => {
@@ -61,16 +60,17 @@ const getColossalPouchItemIdInInventory = (): number | null => {
 	return null;
 };
 
-const getColossalPouchMaxCapacity = (): number => {
+const getColossalPouchMaxCapacity = (pouchItemId: number): number => {
 	const rcLevel = client.getRealSkillLevel(net.runelite.api.Skill.RUNECRAFT);
-	if (rcLevel >= 85) return 40;
-	if (rcLevel >= 75) return 27;
-	if (rcLevel >= 50) return 16;
-	return 8;
+	const isDegraded = pouchItemId === POUCH_ITEM_IDS.COLOSSAL.degraded;
+	if (rcLevel >= 85) return isDegraded ? 35 : 40;
+	if (rcLevel >= 75) return isDegraded ? 23 : 27;
+	if (rcLevel >= 50) return isDegraded ? 13 : 16;
+	return isDegraded ? 6 : 8; // minimum to use the pouch is lvl 25
 };
 
-const isColossalPouchFull = (): boolean =>
-	colossalPouchTrackedFill >= getColossalPouchMaxCapacity();
+const isColossalPouchFull = (pouchItemId: number): boolean =>
+	colossalPouchTrackedFill >= getColossalPouchMaxCapacity(pouchItemId);
 
 const fillColossalPouchFromInventory = (pouchItemId: number): void => {
 	bot.menuAction(
@@ -192,13 +192,13 @@ export const InteractWithBank = (): void => {
 		if (consumed > 0) {
 			colossalPouchTrackedFill += consumed;
 			logInteractWithBank(
-				`Fill consumed ${consumed} essence. Pouch: ${colossalPouchTrackedFill}/${getColossalPouchMaxCapacity()}.`,
+				`Fill consumed ${consumed} essence. Pouch: ${colossalPouchTrackedFill}/${getColossalPouchMaxCapacity(pouchItemId)}.`,
 			);
 		}
 		preFillEssenceCount = null;
 	}
 
-	if (isColossalPouchFull()) {
+	if (isColossalPouchFull(pouchItemId)) {
 		if (!hasDonePostPouchFillWithdraw) {
 			logInteractWithBank(
 				'Withdrawing-all Essence for final inventory fill.',
