@@ -98,5 +98,5 @@ export const NPC_CONTACT_DIALOG = {
 } as const;
 
 // ============ TEST MODE (EASY TO DELETE) ============
-export const TEST_MODE_ENABLED: boolean = true;
+export const TEST_MODE_ENABLED: boolean = false;
 // ====================================================

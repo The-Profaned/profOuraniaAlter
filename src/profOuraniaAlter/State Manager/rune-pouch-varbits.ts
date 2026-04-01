@@ -41,8 +41,15 @@ const RUNE_OPTION_TO_ITEM_ID: Record<RuneOption, number> = {
 };
 
 export const readRunePouchSlots = (slotCount: number): RunePouchSlot[] => {
+	if (slotCount <= 0) {
+		return [];
+	}
+
+	const runePouchContainerId =
+		net.runelite.api.widgets.WidgetInfo.RUNE_POUCH_ITEM_CONTAINER.getPackedId();
+
 	const pouchContainer = client.getItemContainer(
-		net.runelite.api.widgets.WidgetInfo.RUNE_POUCH_ITEM_CONTAINER,
+		runePouchContainerId,
 	);
 
 	if (!pouchContainer) {

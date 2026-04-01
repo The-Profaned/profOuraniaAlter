@@ -117,6 +117,7 @@ export type OuraniaAlterScriptState = State & {
 		lastRunecraftXp: number;
 		lastQueuedCraftTick: number;
 		craftVerificationRetries: number;
+		colossalNoXpCycles: number;
 	};
 };
 
@@ -187,5 +188,6 @@ export const state: OuraniaAlterScriptState = {
 		lastRunecraftXp: 0,
 		lastQueuedCraftTick: -1,
 		craftVerificationRetries: 0,
+		colossalNoXpCycles: 0,
 	},
 };
