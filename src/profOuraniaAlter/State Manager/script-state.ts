@@ -121,6 +121,30 @@ export type OuraniaAlterScriptState = State & {
 	};
 };
 
+/**
+ * Returns the correct post-crafting run-restore state based on the player's
+ * configured restore option. 'No Restore' and 'Stamina Potions' always route
+ * to bank; the other options route to their respective unimplemented states
+ * (PoH / Vile Vigour / Desert Amulet) which will be handled when coded.
+ */
+export const getRunRestoreTargetState = (): MainStates => {
+	switch (state.behaviour.runRestoreOption) {
+		case 'No Restore':
+		case 'Stamina Potions': {
+			return MainStates.TRAVEL_TO_BANK;
+		}
+		case 'PoH': {
+			return MainStates.TRAVEL_TO_POH;
+		}
+		case 'Vile Vigour': {
+			return MainStates.TRAVEL_TO_PRAYER_ALTAR;
+		}
+		case 'Desert Amulet': {
+			return MainStates.TRAVEL_TO_DESERT;
+		}
+	}
+};
+
 export const state: OuraniaAlterScriptState = {
 	debugEnabled: true,
 	debugFullState: false,

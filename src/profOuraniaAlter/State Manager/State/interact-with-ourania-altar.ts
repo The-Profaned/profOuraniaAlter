@@ -3,13 +3,12 @@ import {
 	logInteractWithOuraniaAltar,
 	logSuccess,
 } from '../logging.js';
+import { INTERACTIONS, OBJECT_IDS, OBJECT_NAMES } from '../constants.js';
 import {
-	INTERACTIONS,
-	OBJECT_IDS,
-	OBJECT_NAMES,
-	RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD,
-} from '../constants.js';
-import { MainStates, state, type PouchKey } from '../script-state.js';
+	state,
+	type PouchKey,
+	getRunRestoreTargetState,
+} from '../script-state.js';
 import {
 	getActivePouchKeysInInventory,
 	getPouchInventoryItemIds,
@@ -22,11 +21,6 @@ const ESSENCE_ITEM_IDS: number[] = [
 
 const getInventoryEssenceCount = (): number =>
 	bot.inventory.getQuantityOfAllIds(ESSENCE_ITEM_IDS);
-
-const getRunEnergyPercent = (): number => {
-	const rawRunEnergy = Number(client.getEnergy());
-	return rawRunEnergy > 100 ? Math.floor(rawRunEnergy / 100) : rawRunEnergy;
-};
 
 const getCurrentRunecraftingXp = (): number =>
 	client.getSkillExperience(net.runelite.api.Skill.RUNECRAFT);
@@ -59,10 +53,7 @@ const resetAltarTracking = (): void => {
 
 const routeAfterCrafting = (): void => {
 	resetAltarTracking();
-	state.mainState =
-		getRunEnergyPercent() >= RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD
-			? MainStates.TRAVEL_TO_BANK
-			: MainStates.TRAVEL_TO_PRAYER_ALTAR;
+	state.mainState = getRunRestoreTargetState();
 };
 
 const tryEmptySelectedPouch = (pouchKey: PouchKey | null): void => {

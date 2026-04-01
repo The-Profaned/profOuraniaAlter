@@ -1,4 +1,4 @@
-import { MainStates, state } from './script-state.js';
+import { MainStates, state, getRunRestoreTargetState } from './script-state.js';
 import {
 	OURANIA_DUNGEON_REGION_ID,
 	RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD,
@@ -49,7 +49,7 @@ export const determineScriptStartLocationState = (): void => {
 		state.mainState =
 			getRunEnergyPercent() >= RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD
 				? MainStates.TRAVEL_TO_BANK
-				: MainStates.TRAVEL_TO_PRAYER_ALTAR;
+				: getRunRestoreTargetState();
 		return;
 	}
 
@@ -64,5 +64,5 @@ export const determineScriptStartLocationState = (): void => {
 		return;
 	}
 
-	state.mainState = MainStates.TRAVEL_TO_PRAYER_ALTAR;
+	state.mainState = getRunRestoreTargetState();
 };
