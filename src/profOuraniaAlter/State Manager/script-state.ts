@@ -142,6 +142,9 @@ export const getRunRestoreTargetState = (): MainStates => {
 		case 'Desert Amulet': {
 			return MainStates.TRAVEL_TO_DESERT;
 		}
+		default: {
+			return MainStates.TRAVEL_TO_BANK;
+		}
 	}
 };
 
