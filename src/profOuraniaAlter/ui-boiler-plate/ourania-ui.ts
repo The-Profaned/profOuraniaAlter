@@ -9,6 +9,10 @@ import {
 import { state } from '../State Manager/script-state.js';
 import { logOuraniaAlter } from '../State Manager/logging.js';
 import { LOAD_DEBUG_UI_TAB } from '../State Manager/constants.js';
+import {
+	loadUiPreferencesIntoState,
+	persistUiPreferencesFromState,
+} from './UIConfigs/ui-preferences.js';
 
 let startFrame: javax.swing.JFrame | null = null;
 
@@ -271,6 +275,8 @@ const createStartFrame = (): javax.swing.JFrame => {
 	const startButton = new javax.swing.JButton('Start Script');
 	startButton.setPreferredSize(new java.awt.Dimension(180, 36));
 	startButton.addActionListener(() => {
+		persistUiPreferencesFromState();
+
 		if (LOAD_DEBUG_UI_TAB && state.debugTab.forceStateOnStart) {
 			state.mainState = state.debugTab.forcedMainState;
 			state.lastLoggedMainState = null;
@@ -302,6 +308,7 @@ const createStartFrame = (): javax.swing.JFrame => {
 export const onTemplateStart = (): void => {
 	state.gameTick = 0;
 	state.uiCompleted = false;
+	loadUiPreferencesIntoState();
 	disposeStartFrame();
 	startFrame = createStartFrame();
 	startFrame.setVisible(true);

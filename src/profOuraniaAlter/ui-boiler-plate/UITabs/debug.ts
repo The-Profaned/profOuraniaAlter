@@ -1,5 +1,6 @@
 import { createPanel } from '../../../imports/ui-helper-functions.js';
 import { state, MainStates } from '../../State Manager/script-state.js';
+import { persistUiPreferencesFromState } from '../UIConfigs/ui-preferences.js';
 
 type MainStateType = MainStates;
 
@@ -35,6 +36,7 @@ export const createDebugTab = (): javax.swing.JPanel => {
 	forceStateCheck.setAlignmentX(0);
 	forceStateCheck.addActionListener(() => {
 		state.debugTab.forceStateOnStart = forceStateCheck.isSelected();
+		persistUiPreferencesFromState();
 	});
 
 	const stateRow = new javax.swing.JPanel(
@@ -52,6 +54,7 @@ export const createDebugTab = (): javax.swing.JPanel => {
 		state.debugTab.forcedMainState = String(
 			stateSelect.getSelectedItem(),
 		) as MainStateType;
+		persistUiPreferencesFromState();
 	});
 	stateRow.add(stateSelect);
 

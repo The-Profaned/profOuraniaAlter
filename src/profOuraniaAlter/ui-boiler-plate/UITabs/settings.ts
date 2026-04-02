@@ -5,6 +5,7 @@ import {
 	type RuneOption,
 	type RuneSelectionOption,
 } from '../../State Manager/script-state.js';
+import { persistUiPreferencesFromState } from '../UIConfigs/ui-preferences.js';
 
 const RUNE_SELECTION_OPTIONS: string[] = [
 	'Air',
@@ -19,11 +20,7 @@ const RUNE_SELECTION_OPTIONS: string[] = [
 	'Soul',
 ];
 
-const POH_ACCESS_OPTIONS: string[] = [
-	'Tablet',
-	'Construction Cape',
-	'Max Cape',
-];
+const POH_ACCESS_OPTIONS: string[] = ['Tablet', 'Construction Cape'];
 
 const getSelectedRune = (comboBox: javax.swing.JComboBox): RuneOption =>
 	String(comboBox.getSelectedItem()) as RuneOption;
@@ -73,6 +70,7 @@ export const createSettingsTab = (
 	runesForBankingSelect.setSelectedItem(state.settings.runesForBanking);
 	runesForBankingSelect.addActionListener(() => {
 		state.settings.runesForBanking = getSelectedRune(runesForBankingSelect);
+		persistUiPreferencesFromState();
 	});
 	runesForBankingRow.add(runesForBankingSelect);
 
@@ -86,6 +84,7 @@ export const createSettingsTab = (
 	pohAccessSelect.setSelectedItem(state.settings.pohAccessOption);
 	pohAccessSelect.addActionListener(() => {
 		state.settings.pohAccessOption = getSelectedPohAccess(pohAccessSelect);
+		persistUiPreferencesFromState();
 	});
 	pohAccessRow.add(pohAccessSelect);
 	pohAccessRow.setAlignmentX(0);
@@ -161,14 +160,7 @@ export const createSettingsTab = (
 	runePouchOptionsPanel.setMaximumSize(new java.awt.Dimension(10000, 34));
 
 	let isRunePouchEnabled = false;
-
-	const resetRunePouchSelections = (): void => {
-		state.settings.divinePouchEnabled = false;
-		state.settings.runeSelection1 = 'na';
-		state.settings.runeSelection2 = 'na';
-		state.settings.runeSelection3 = 'na';
-		state.settings.runeSelection4 = 'na';
-	};
+	let isInitializing = true;
 
 	const normalizeRunePouchSelections = (): void => {
 		if (state.settings.runeSelection1 === 'na') {
@@ -204,6 +196,7 @@ export const createSettingsTab = (
 				getRuneSelectionValue(savedSelections[slotIndex]),
 			);
 			runeSelect.addActionListener(() => {
+				if (isInitializing) return;
 				const selectedRune = getSelectedRune(runeSelect);
 				switch (slotIndex) {
 					case 0: {
@@ -223,6 +216,7 @@ export const createSettingsTab = (
 						break;
 					}
 				}
+				persistUiPreferencesFromState();
 			});
 			runeSlotDropdownsPanel.add(runeSelect);
 		}
@@ -231,7 +225,7 @@ export const createSettingsTab = (
 		runeSlotDropdownsPanel.repaint();
 	};
 
-	const applyRunePouchSwitchVisual = (): void => {
+	const applyRunePouchSwitchVisual = (persistChanges = true): void => {
 		if (isRunePouchEnabled) {
 			normalizeRunePouchSelections();
 			runePouchSwitch.setText('>');
@@ -245,11 +239,12 @@ export const createSettingsTab = (
 			runePouchSwitch.setToolTipText('Rune Pouch: No');
 			noLight.setBackground(java.awt.Color.decode('#8b1e1e'));
 			yesLight.setBackground(java.awt.Color.decode('#274229'));
-			divinePouchCheck.setSelected(false);
-			resetRunePouchSelections();
 		}
 
 		state.settings.runePouchEnabled = isRunePouchEnabled;
+		if (persistChanges) {
+			persistUiPreferencesFromState();
+		}
 		divinePouchCheck.setVisible(isRunePouchEnabled);
 		runePouchOptionsPanel.setVisible(isRunePouchEnabled);
 		rebuildRunePouchSlotDropdowns(divinePouchCheck.isSelected() ? 4 : 3);
@@ -262,7 +257,9 @@ export const createSettingsTab = (
 	};
 
 	divinePouchCheck.addActionListener(() => {
+		if (isInitializing) return;
 		state.settings.divinePouchEnabled = divinePouchCheck.isSelected();
+		persistUiPreferencesFromState();
 		rebuildRunePouchSlotDropdowns(divinePouchCheck.isSelected() ? 4 : 3);
 		runePouchOptionsPanel.revalidate();
 		runePouchOptionsPanel.repaint();
@@ -271,6 +268,7 @@ export const createSettingsTab = (
 	});
 
 	runePouchSwitch.addActionListener(() => {
+		if (isInitializing) return;
 		isRunePouchEnabled = !isRunePouchEnabled;
 		applyRunePouchSwitchVisual();
 	});
@@ -278,7 +276,8 @@ export const createSettingsTab = (
 	isRunePouchEnabled = state.settings.runePouchEnabled;
 	divinePouchCheck.setSelected(state.settings.divinePouchEnabled);
 
-	applyRunePouchSwitchVisual();
+	applyRunePouchSwitchVisual(false);
+	isInitializing = false;
 
 	const setPohAccessVisible = (visible: boolean): void => {
 		pohAccessRow.setVisible(visible);
