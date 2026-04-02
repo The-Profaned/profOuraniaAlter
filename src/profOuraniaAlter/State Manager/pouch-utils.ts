@@ -21,6 +21,13 @@ const POUCH_CAPACITY: Record<PouchKey, number> = {
 	COLOSSAL: 40,
 };
 
+const DEGRADED_STANDARD_POUCH_CAPACITY: Record<StandardPouchKey, number> = {
+	SMALL: 3,
+	MEDIUM: 5,
+	LARGE: 7,
+	GIANT: 9,
+};
+
 type PouchBehaviourKey =
 	| 'useSmallPouch'
 	| 'useMediumPouch'
@@ -45,6 +52,23 @@ const behaviourKeyForPouch: Record<PouchKey, PouchBehaviourKey> = {
 
 export const getPouchCapacity = (pouchKey: PouchKey): number =>
 	POUCH_CAPACITY[pouchKey];
+
+export const getCurrentPouchCapacity = (pouchKey: PouchKey): number => {
+	if (pouchKey === 'SMALL') {
+		return POUCH_CAPACITY.SMALL;
+	}
+
+	if (pouchKey === 'COLOSSAL') {
+		return POUCH_CAPACITY.COLOSSAL;
+	}
+
+	const degradedId = POUCH_ITEM_IDS[pouchKey].degraded;
+	if (degradedId !== undefined && bot.inventory.containsId(degradedId)) {
+		return DEGRADED_STANDARD_POUCH_CAPACITY[pouchKey];
+	}
+
+	return POUCH_CAPACITY[pouchKey];
+};
 
 export const getPouchInventoryItemIds = (pouchKey: PouchKey): number[] => {
 	const pouchIds: number[] = [POUCH_ITEM_IDS[pouchKey].normal];
@@ -110,7 +134,7 @@ export const chooseBestStandardPouchBatch = (
 		for (const [index, pouchKey] of remainingPouches.entries()) {
 			if ((mask & (1 << index)) === 0) continue;
 			selectedPouches.push(pouchKey);
-			totalCapacity += getPouchCapacity(pouchKey);
+			totalCapacity += getCurrentPouchCapacity(pouchKey);
 		}
 
 		if (totalCapacity > maxInventorySpace) {
@@ -118,7 +142,7 @@ export const chooseBestStandardPouchBatch = (
 		}
 
 		const capacityOrdering = selectedPouches
-			.map((pouchKey) => getPouchCapacity(pouchKey))
+			.map((pouchKey) => getCurrentPouchCapacity(pouchKey))
 			.sort((left, right) => right - left);
 
 		if (
@@ -136,7 +160,8 @@ export const chooseBestStandardPouchBatch = (
 	}
 
 	return bestBatch.sort(
-		(left, right) => getPouchCapacity(right) - getPouchCapacity(left),
+		(left, right) =>
+			getCurrentPouchCapacity(right) - getCurrentPouchCapacity(left),
 	);
 };
 

@@ -10,6 +10,12 @@ import {
 	RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD,
 } from '../constants.js';
 import { getTotalRuneAmountAvailable } from '../rune-pouch-varbits.js';
+import {
+	getActiveStandardPouchKeysInInventory,
+	getCurrentPouchCapacity,
+	getPouchInventoryItemIds,
+} from '../pouch-utils.js';
+import type { StandardPouchKey } from '../script-state.js';
 
 const PURE_ESSENCE_ID = net.runelite.api.ItemID.PURE_ESSENCE;
 const DAEYALT_ESSENCE_ID = net.runelite.api.ItemID.DAEYALT_ESSENCE;
@@ -34,6 +40,7 @@ let hasDepositedInventoryAtBank = false;
 let hasConsumedStaminaDoseAtBank = false;
 let hasCompletedStaminaPrepAtBank = false;
 let colossalPouchTrackedFill = 0;
+let pendingStandardPouchesToFill: StandardPouchKey[] = [];
 let preFillEssenceCount: number | null = null;
 let hasDonePostPouchFillWithdraw = false;
 
@@ -45,6 +52,7 @@ const resetBankingTracking = (): void => {
 	hasConsumedStaminaDoseAtBank = false;
 	hasCompletedStaminaPrepAtBank = false;
 	colossalPouchTrackedFill = 0;
+	pendingStandardPouchesToFill = [];
 	preFillEssenceCount = null;
 	hasDonePostPouchFillWithdraw = false;
 	state.workflowStep = 0;
@@ -137,6 +145,78 @@ const isColossalOnlyConfigured = (): boolean =>
 	!state.behaviour.useLargePouch &&
 	!state.behaviour.useGiantPouch;
 
+const isStandardOnlyConfigured = (): boolean =>
+	!state.behaviour.useColossalPouch &&
+	(state.behaviour.useSmallPouch ||
+		state.behaviour.useMediumPouch ||
+		state.behaviour.useLargePouch ||
+		state.behaviour.useGiantPouch);
+
+const getInventoryEssenceCount = (): number =>
+	bot.inventory.getQuantityOfId(PURE_ESSENCE_ID) +
+	bot.inventory.getQuantityOfId(DAEYALT_ESSENCE_ID);
+
+const initializePendingStandardPouches = (): void => {
+	if (pendingStandardPouchesToFill.length > 0) {
+		return;
+	}
+
+	pendingStandardPouchesToFill = getActiveStandardPouchKeysInInventory().sort(
+		(left, right) =>
+			getCurrentPouchCapacity(right) - getCurrentPouchCapacity(left),
+	);
+};
+
+const fillStandardPouchFromInventory = (pouchKey: StandardPouchKey): void => {
+	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
+	bot.inventory.interactWithIds(pouchItemIds, ['Fill']);
+};
+
+const handleStandardPouchBanking = (selectedEssenceId: number): boolean => {
+	initializePendingStandardPouches();
+
+	if (pendingStandardPouchesToFill.length === 0) {
+		if (!hasDonePostPouchFillWithdraw) {
+			logInteractWithBank(
+				'Withdrawing-all Essence for final inventory fill.',
+			);
+			bot.bank.withdrawAllWithId(selectedEssenceId);
+			hasDonePostPouchFillWithdraw = true;
+			return true;
+		}
+
+		logInteractWithBank(
+			'Banking complete. Transitioning to travel to Ourania altar.',
+		);
+		resetBankingTracking();
+		state.mainState = MainStates.TRAVEL_TO_OURANIA_ALTAR;
+		return true;
+	}
+
+	const inventoryEssence = getInventoryEssenceCount();
+	const fillablePouch = pendingStandardPouchesToFill.find(
+		(pouchKey) => inventoryEssence >= getCurrentPouchCapacity(pouchKey),
+	);
+
+	if (fillablePouch) {
+		const pouchCapacity = getCurrentPouchCapacity(fillablePouch);
+		logInteractWithBank(
+			`Filling ${fillablePouch} pouch (${pouchCapacity} capacity) with ${inventoryEssence} essence in inventory.`,
+		);
+		fillStandardPouchFromInventory(fillablePouch);
+		pendingStandardPouchesToFill = pendingStandardPouchesToFill.filter(
+			(pouchKey) => pouchKey !== fillablePouch,
+		);
+		return true;
+	}
+
+	logInteractWithBank(
+		`Withdrawing-all Essence to continue standard pouch fill plan. Pending pouches: ${pendingStandardPouchesToFill.join(', ')}.`,
+	);
+	bot.bank.withdrawAllWithId(selectedEssenceId);
+	return true;
+};
+
 const getColossalPouchItemIdInInventory = (): number | null => {
 	if (bot.inventory.containsId(POUCH_ITEM_IDS.COLOSSAL.normal)) {
 		return POUCH_ITEM_IDS.COLOSSAL.normal;
@@ -206,11 +286,9 @@ export const InteractWithBank = (): void => {
 		hasLoggedBankStateStart = true;
 	}
 
-	// NOTE: current banking logic intentionally supports colossal-only flow.
-	// Future work: add separate flow for other pouch combinations.
-	if (!isColossalOnlyConfigured()) {
+	if (!isColossalOnlyConfigured() && !isStandardOnlyConfigured()) {
 		logError(
-			'Current bank flow only supports colossal-only pouch selection. Stopping in IDLE.',
+			'Current bank flow supports either colossal-only or standard-only pouch selection. Mixed/empty pouch configuration is unsupported.',
 		);
 		resetBankingTracking();
 		state.mainState = MainStates.IDLE;
@@ -269,18 +347,21 @@ export const InteractWithBank = (): void => {
 		return;
 	}
 
+	const selectedEssenceId = resolveSelectedEssenceId();
+
+	if (isStandardOnlyConfigured()) {
+		handleStandardPouchBanking(selectedEssenceId);
+		return;
+	}
+
 	const pouchItemId = getColossalPouchItemIdInInventory();
 	if (pouchItemId === null) {
 		logError('Colossal pouch not found in inventory while banking.');
 		return;
 	}
 
-	const selectedEssenceId = resolveSelectedEssenceId();
-
 	if (preFillEssenceCount !== null) {
-		const currentEssence =
-			bot.inventory.getQuantityOfId(PURE_ESSENCE_ID) +
-			bot.inventory.getQuantityOfId(DAEYALT_ESSENCE_ID);
+		const currentEssence = getInventoryEssenceCount();
 		const consumed = preFillEssenceCount - currentEssence;
 		if (consumed > 0) {
 			colossalPouchTrackedFill += consumed;
@@ -315,9 +396,7 @@ export const InteractWithBank = (): void => {
 		return;
 	}
 
-	preFillEssenceCount =
-		bot.inventory.getQuantityOfId(PURE_ESSENCE_ID) +
-		bot.inventory.getQuantityOfId(DAEYALT_ESSENCE_ID);
+	preFillEssenceCount = getInventoryEssenceCount();
 	logInteractWithBank('Filling Colossal pouch.');
 	fillColossalPouchFromInventory(pouchItemId);
 	return;

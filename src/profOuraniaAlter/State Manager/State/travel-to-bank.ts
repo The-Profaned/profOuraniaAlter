@@ -10,21 +10,28 @@ import { anyPouchDegraded } from '../pouch-utils.js';
 
 const OURANIA_TELEPORT_REGION_ID = 9778;
 const LADDER_RETRY_TICKS = 24;
+const SPELLBOOK_VARBIT_ID = 4070;
+const LUNAR_SPELLBOOK_VALUE = 2;
 
 let lastLadderClickTick = -1;
 let hasLoggedTravelStart = false;
 let hasLoggedWaitForTeleportRegion = false;
 let hasLoggedWaitForLadderClimbConfirmation = false;
+let hasLoggedSpellbookMismatch = false;
 
 const resetTravelToBankLogState = (): void => {
 	hasLoggedTravelStart = false;
 	hasLoggedWaitForTeleportRegion = false;
 	hasLoggedWaitForLadderClimbConfirmation = false;
+	hasLoggedSpellbookMismatch = false;
 };
 
 const getRegionIdFromLocation = (
 	location: net.runelite.api.coords.WorldPoint,
 ): number => ((location.getX() >> 6) << 8) + (location.getY() >> 6);
+
+const isOnLunarSpellbook = (): boolean =>
+	client.getVarbitValue(SPELLBOOK_VARBIT_ID) === LUNAR_SPELLBOOK_VALUE;
 
 const transitionAfterBankArrival = (): void => {
 	state.workflowStep = 0;
@@ -73,6 +80,21 @@ export const TravelToBank = (): void => {
 				state.workflowStep = 1;
 				return;
 			}
+
+			if (!isOnLunarSpellbook()) {
+				if (!hasLoggedSpellbookMismatch) {
+					logError(
+						`Blocked Ourania Teleport cast because current spellbook is not Lunar (varbit ${client.getVarbitValue(SPELLBOOK_VARBIT_ID)}). Waiting until Lunar is active.`,
+					);
+					hasLoggedSpellbookMismatch = true;
+				}
+				return;
+			}
+
+			hasLoggedSpellbookMismatch = false;
+			logTravelToBank(
+				`Ourania Teleport pre-check passed (spellbook varbit ${client.getVarbitValue(SPELLBOOK_VARBIT_ID)}).`,
+			);
 
 			logTravelToBank('Casting Ourania Teleport spell.');
 			try {
