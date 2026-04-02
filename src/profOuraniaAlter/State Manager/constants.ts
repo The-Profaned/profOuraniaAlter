@@ -67,11 +67,8 @@ export const INTERACTIONS = {
 // If below this %, route to prayer altar first.
 export const RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD: number = 50;
 
-// VarBit for Kingdom Divided quest completion (required for Vile Vigour)
-export const KINGDOM_DIVIDED_VARBIT: number = 0; // THIS NUMBER IS A PLACEHOLDER
-
 // VarBit for Desert Amulet unlock/availability (required for Desert Amulet option)
-export const DESERT_AMULET_VARBIT: number = 0; // THIS NUMBER IS A PLACEHOLDER
+export const DESERT_AMULET_VARBIT: number = 4486;
 
 // Runecrafting pouch level requirements
 export const RUNECRAFTING_POUCH_LEVELS = {
