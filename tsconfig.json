@@ -11,7 +11,7 @@
 		"lib": ["ESNext"],
 		"skipLibCheck": true,
 		"skipDefaultLibCheck": true,
-		"ignoreDeprecations": "6.0",
+		"ignoreDeprecations": "5.0",
 		"baseUrl": ".",
 		"checkJs": false,
 		"allowJs": true,
