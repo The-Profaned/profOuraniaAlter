@@ -25,10 +25,10 @@ export const createBehaviourTab = (
 	row1.add(new javax.swing.JLabel('Run Restore:'));
 
 	// Build dropdown options conditionally based on quest completion/diary unlocks.
-	let hasKingdomDivided: boolean =
+	const hasKingdomDivided: boolean =
 		net.runelite.api.Quest.A_KINGDOM_DIVIDED.getState(client) ===
 		net.runelite.api.QuestState.FINISHED;
-	let hasDesertAmulet: boolean =
+	const hasDesertAmulet: boolean =
 		client.getVarbitValue(DESERT_AMULET_VARBIT) > 0;
 
 	// TEST MODE: Override with random varbit states
@@ -83,7 +83,7 @@ export const createBehaviourTab = (
 	);
 
 	// Get player's runecrafting level
-	let runecraftingLevel: number = client.getRealSkillLevel(
+	const runecraftingLevel: number = client.getRealSkillLevel(
 		net.runelite.api.Skill.RUNECRAFT,
 	);
 

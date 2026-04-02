@@ -2,7 +2,6 @@ import { MainStates, state } from '../script-state.js';
 import { logError, logSwapMageBook } from '../logging.js';
 
 const WORKFLOW_STEP_PENDING_POH_MAGIC_SWAP = 90;
-const WORKFLOW_STEP_POST_VILE_VIGOUR = 10;
 
 const NORMAL_SPELLBOOK_INDEX = 1;
 const ARCEUUS_SPELLBOOK_INDEX = 3;
@@ -29,8 +28,8 @@ export const SwapMageBook = (): void => {
 			return;
 		}
 
-		state.workflowStep = WORKFLOW_STEP_POST_VILE_VIGOUR;
-		state.mainState = MainStates.TRAVEL_TO_PRAYER_ALTAR;
+		state.workflowStep = 0;
+		state.mainState = MainStates.USE_PRAYER_ALTAR;
 		return;
 	}
 
