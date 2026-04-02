@@ -8,6 +8,7 @@ import {
 	state,
 	type RunRestoreOption,
 } from '../../State Manager/script-state.js';
+import { persistUiPreferencesFromState } from '../UIConfigs/ui-preferences.js';
 
 export const createBehaviourTab = (
 	onPouchVisibilityChange?: (showPouchSelection: boolean) => void,
@@ -61,19 +62,19 @@ export const createBehaviourTab = (
 	const hasSavedRunRestoreOption = runRestoreOptions.includes(
 		state.behaviour.runRestoreOption,
 	);
-	runRestoreSelect.setSelectedItem(
+	const selectedRunRestoreOption: RunRestoreOption = (
 		hasSavedRunRestoreOption
 			? state.behaviour.runRestoreOption
-			: runRestoreOptions[0],
-	);
-	state.behaviour.runRestoreOption = String(
-		runRestoreSelect.getSelectedItem(),
+			: runRestoreOptions[0]
 	) as RunRestoreOption;
+	runRestoreSelect.setSelectedItem(selectedRunRestoreOption);
+	state.behaviour.runRestoreOption = selectedRunRestoreOption;
 	onRunRestoreOptionChange?.(state.behaviour.runRestoreOption);
 	runRestoreSelect.addActionListener(() => {
 		state.behaviour.runRestoreOption = String(
 			runRestoreSelect.getSelectedItem(),
 		) as RunRestoreOption;
+		persistUiPreferencesFromState();
 		onRunRestoreOptionChange?.(state.behaviour.runRestoreOption);
 	});
 	row1.add(runRestoreSelect);
@@ -153,15 +154,19 @@ export const createBehaviourTab = (
 
 	smallCheck.addActionListener(() => {
 		state.behaviour.useSmallPouch = smallCheck.isSelected();
+		persistUiPreferencesFromState();
 	});
 	mediumCheck.addActionListener(() => {
 		state.behaviour.useMediumPouch = mediumCheck.isSelected();
+		persistUiPreferencesFromState();
 	});
 	largeCheck.addActionListener(() => {
 		state.behaviour.useLargePouch = largeCheck.isSelected();
+		persistUiPreferencesFromState();
 	});
 	giantCheck.addActionListener(() => {
 		state.behaviour.useGiantPouch = giantCheck.isSelected();
+		persistUiPreferencesFromState();
 	});
 
 	const setPouchOptionsEnabled = (enabled: boolean): void => {
@@ -218,6 +223,8 @@ export const createBehaviourTab = (
 			giantCheck.setSelected(state.behaviour.useGiantPouch);
 			setPouchOptionsEnabled(true);
 		}
+
+		persistUiPreferencesFromState();
 
 		pouchSelectionPanel.setVisible(showPouchSelection);
 		onPouchVisibilityChange?.(showPouchSelection);

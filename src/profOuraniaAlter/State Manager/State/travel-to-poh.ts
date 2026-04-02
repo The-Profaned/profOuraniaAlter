@@ -10,22 +10,25 @@ const HOUSE_TAB_ID = net.runelite.api.ItemID.TELEPORT_TO_HOUSE;
 
 const CONSTRUCTION_CAPE_POH_OPTION = 'Tele to POH';
 const HOUSE_TAB_BREAK_OPTION = 'Break';
-const MAGIC_LEVEL_FOR_HOUSE_TELEPORT = 96;
-const WORKFLOW_STEP_PENDING_MAGIC_SWAP = 90;
 const POOL_DRINK_OPTION = 'Drink';
 const POOL_INTERACT_RETRY_TICKS = 10;
+const POOL_SEARCH_GRACE_TICKS = 7;
+const POST_RESTORE_DELAY_TICKS = 1;
 
 const POH_POOL_NAMES: string[] = [
-	'Revitalisation pool',
-	'Rejuvenation pool',
-	'Fancy rejuvenation pool',
-	'Ornate rejuvenation pool',
+	'Pool of Revitalisation',
+	'Pool of Rejuvenation',
+	'Fancy pool of Rejuvenation',
+	'Ornate pool of Rejuvenation',
 ];
 
 let hasLoggedTravelStart = false;
 let hasLoggedWaitingForTeleport = false;
+let hasLoggedWaitingForPool = false;
 let hasLoggedWaitingForRunRestore = false;
 let lastPoolClickTick = -1;
+let startedLookingForPoolTick = -1;
+let reachedFullRunTick = -1;
 
 const getRegionIdFromLocation = (
 	location: net.runelite.api.coords.WorldPoint,
@@ -34,8 +37,11 @@ const getRegionIdFromLocation = (
 const resetTravelToPohTracking = (): void => {
 	hasLoggedTravelStart = false;
 	hasLoggedWaitingForTeleport = false;
+	hasLoggedWaitingForPool = false;
 	hasLoggedWaitingForRunRestore = false;
 	lastPoolClickTick = -1;
+	startedLookingForPoolTick = -1;
+	reachedFullRunTick = -1;
 	state.workflowStep = 0;
 };
 
@@ -111,47 +117,53 @@ export const TravelToPoh = (): void => {
 
 	switch (state.workflowStep) {
 		case 0: {
-			const constructionLevel = client.getRealSkillLevel(
-				net.runelite.api.Skill.CONSTRUCTION,
-			);
-			if (
-				constructionLevel >= 99 &&
-				hasConstructionCapeInInventoryOrEquipment()
-			) {
-				if (!tryUseConstructionCapePohTeleport()) {
+			switch (state.settings.pohAccessOption) {
+				case 'Construction Cape': {
+					const constructionLevel = client.getRealSkillLevel(
+						net.runelite.api.Skill.CONSTRUCTION,
+					);
+					if (
+						constructionLevel >= 99 &&
+						hasConstructionCapeInInventoryOrEquipment()
+					) {
+						if (!tryUseConstructionCapePohTeleport()) {
+							return;
+						}
+						hasLoggedWaitingForTeleport = false;
+						state.workflowStep = 1;
+						return;
+					}
+
+					logError(
+						'Settings selected Construction Cape, but no usable cape path found. Transitioning to travel to bank.',
+					);
+					resetTravelToPohTracking();
+					state.mainState = MainStates.TRAVEL_TO_BANK;
 					return;
 				}
-				hasLoggedWaitingForTeleport = false;
-				state.workflowStep = 1;
-				return;
+				case 'Tablet': {
+					if (bot.inventory.containsId(HOUSE_TAB_ID)) {
+						logTravelToPoh(
+							'Using Teleport to House tablet (Break).',
+						);
+						bot.inventory.interactWithIds(
+							[HOUSE_TAB_ID],
+							[HOUSE_TAB_BREAK_OPTION],
+						);
+						hasLoggedWaitingForTeleport = false;
+						state.workflowStep = 1;
+						return;
+					}
+
+					logError(
+						'Settings selected Tablet, but no Teleport to House tablet is available. Transitioning to travel to bank.',
+					);
+					resetTravelToPohTracking();
+					state.mainState = MainStates.TRAVEL_TO_BANK;
+					return;
+				}
 			}
 
-			if (bot.inventory.containsId(HOUSE_TAB_ID)) {
-				logTravelToPoh('Using Teleport to House tablet (Break).');
-				bot.inventory.interactWithIds(
-					[HOUSE_TAB_ID],
-					[HOUSE_TAB_BREAK_OPTION],
-				);
-				hasLoggedWaitingForTeleport = false;
-				state.workflowStep = 1;
-				return;
-			}
-
-			const magicLevel = client.getRealSkillLevel(
-				net.runelite.api.Skill.MAGIC,
-			);
-			if (magicLevel >= MAGIC_LEVEL_FOR_HOUSE_TELEPORT) {
-				logTravelToPoh(
-					'No Construction cape/tablet path available. Routing to SWAP_MAGE_BOOK for spellbook swap + Teleport to House.',
-				);
-				state.workflowStep = WORKFLOW_STEP_PENDING_MAGIC_SWAP;
-				state.mainState = MainStates.SWAP_MAGE_BOOK;
-				return;
-			}
-
-			logError(
-				'Missing PoH travel method: requires (99 Construction + Construction cape in inventory/equipment), Teleport to House tablet, or 96 Magic for spell route.',
-			);
 			return;
 		}
 		case 1: {
@@ -167,6 +179,8 @@ export const TravelToPoh = (): void => {
 			logTravelToPoh(
 				'PoH teleport detected. Looking for an available rejuvenation pool.',
 			);
+			startedLookingForPoolTick = state.gameTick;
+			hasLoggedWaitingForPool = false;
 			state.workflowStep = 2;
 			return;
 		}
@@ -174,12 +188,26 @@ export const TravelToPoh = (): void => {
 			const pohPool =
 				bot.objects.getTileObjectsWithNames(POH_POOL_NAMES)[0];
 			if (!pohPool) {
-				logError(
-					`No supported PoH pool found. Expected one of: ${POH_POOL_NAMES.join(', ')}.`,
-				);
+				if (!hasLoggedWaitingForPool) {
+					logTravelToPoh(
+						'Waiting for PoH pool objects to load after teleport.',
+					);
+					hasLoggedWaitingForPool = true;
+				}
+
+				if (
+					startedLookingForPoolTick >= 0 &&
+					state.gameTick - startedLookingForPoolTick >=
+						POOL_SEARCH_GRACE_TICKS
+				) {
+					logError(
+						`No supported PoH pool found after ${POOL_SEARCH_GRACE_TICKS} ticks. Expected one of: ${POH_POOL_NAMES.join(', ')}.`,
+					);
+				}
 				return;
 			}
 
+			hasLoggedWaitingForPool = false;
 			logTravelToPoh('Interacting with PoH pool for run restore.');
 			bot.objects.interactSuppliedObject(pohPool, POOL_DRINK_OPTION);
 			lastPoolClickTick = state.gameTick;
@@ -191,10 +219,10 @@ export const TravelToPoh = (): void => {
 			const runEnergy = getRunEnergyPercent();
 			if (runEnergy >= 100) {
 				logTravelToPoh(
-					'Run energy restored to 100% in PoH. Transitioning to travel to bank.',
+					'Run energy restored to 100% in PoH. Waiting one tick before transitioning.',
 				);
-				resetTravelToPohTracking();
-				state.mainState = MainStates.TRAVEL_TO_BANK;
+				reachedFullRunTick = state.gameTick;
+				state.workflowStep = 4;
 				return;
 			}
 
@@ -230,6 +258,25 @@ export const TravelToPoh = (): void => {
 			);
 			bot.objects.interactSuppliedObject(pohPool, POOL_DRINK_OPTION);
 			lastPoolClickTick = state.gameTick;
+			return;
+		}
+		case 4: {
+			if (reachedFullRunTick < 0) {
+				reachedFullRunTick = state.gameTick;
+			}
+
+			if (
+				state.gameTick - reachedFullRunTick <
+				POST_RESTORE_DELAY_TICKS
+			) {
+				return;
+			}
+
+			logTravelToPoh(
+				'Post-restore delay complete. Transitioning to travel to bank.',
+			);
+			resetTravelToPohTracking();
+			state.mainState = MainStates.TRAVEL_TO_BANK;
 			return;
 		}
 		default: {
