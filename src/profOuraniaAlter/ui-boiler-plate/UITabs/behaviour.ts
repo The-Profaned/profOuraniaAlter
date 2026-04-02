@@ -1,7 +1,6 @@
 import { createPanel } from '../../../imports/ui-helper-functions.js';
 import {
 	DESERT_AMULET_VARBIT,
-	KINGDOM_DIVIDED_VARBIT,
 	RUNECRAFTING_POUCH_LEVELS,
 	TEST_MODE_ENABLED,
 } from '../../State Manager/constants.js';
@@ -25,16 +24,17 @@ export const createBehaviourTab = (
 	);
 	row1.add(new javax.swing.JLabel('Run Restore:'));
 
-	// Build dropdown options conditionally based on Kingdom Divided completion
+	// Build dropdown options conditionally based on quest completion/diary unlocks.
 	let hasKingdomDivided: boolean =
-		client.getVarbitValue(KINGDOM_DIVIDED_VARBIT) > 0;
+		net.runelite.api.Quest.A_KINGDOM_DIVIDED.getState(client) ===
+		net.runelite.api.QuestState.FINISHED;
 	let hasDesertAmulet: boolean =
 		client.getVarbitValue(DESERT_AMULET_VARBIT) > 0;
 
 	// TEST MODE: Override with random varbit states
 	if (TEST_MODE_ENABLED) {
 		log.print(
-			`[TEST MODE] Kingdom Divided varbit read as: ${hasKingdomDivided}`,
+			`[TEST MODE] Kingdom Divided quest complete: ${hasKingdomDivided}`,
 		);
 		log.print(
 			`[TEST MODE] Desert Amulet varbit read as: ${hasDesertAmulet}`,
