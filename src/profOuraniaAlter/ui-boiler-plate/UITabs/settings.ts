@@ -20,7 +20,11 @@ const RUNE_SELECTION_OPTIONS: string[] = [
 	'Soul',
 ];
 
-const POH_ACCESS_OPTIONS: string[] = ['Tablet', 'Construction Cape'];
+const POH_ACCESS_OPTIONS: string[] = [
+	'Tablet',
+	'Construction Cape',
+	'Spellbook Swap',
+];
 
 const getSelectedRune = (comboBox: javax.swing.JComboBox): RuneOption =>
 	String(comboBox.getSelectedItem()) as RuneOption;

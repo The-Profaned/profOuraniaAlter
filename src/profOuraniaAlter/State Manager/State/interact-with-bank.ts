@@ -31,13 +31,11 @@ const STAMINA_POTION_IDS_LOW_TO_HIGH: number[] = [
 	net.runelite.api.ItemID.STAMINA_POTION3,
 	net.runelite.api.ItemID.STAMINA_POTION4,
 ];
-const EMPTY_VIAL_ITEM_ID = net.runelite.api.ItemID.VIAL;
 
 let selectedBankingEssenceId: number | null = null;
 let hasLoggedBankStateStart = false;
 let hasLoggedOpeningBank = false;
 let hasDepositedInventoryAtBank = false;
-let hasConsumedStaminaDoseAtBank = false;
 let hasCompletedStaminaPrepAtBank = false;
 let colossalPouchTrackedFill = 0;
 let pendingStandardPouchesToFill: StandardPouchKey[] = [];
@@ -49,7 +47,6 @@ const resetBankingTracking = (): void => {
 	hasLoggedBankStateStart = false;
 	hasLoggedOpeningBank = false;
 	hasDepositedInventoryAtBank = false;
-	hasConsumedStaminaDoseAtBank = false;
 	hasCompletedStaminaPrepAtBank = false;
 	colossalPouchTrackedFill = 0;
 	pendingStandardPouchesToFill = [];
@@ -88,54 +85,29 @@ const handleStaminaPrepBeforeEssenceFill = (): boolean => {
 		return false;
 	}
 
-	if (!hasConsumedStaminaDoseAtBank) {
-		if (bot.inventory.containsAnyIds(STAMINA_POTION_IDS_LOW_TO_HIGH)) {
-			logInteractWithBank(
-				`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%. Drinking stamina potion before essence fill.`,
-			);
-			bot.inventory.interactWithIds(STAMINA_POTION_IDS_LOW_TO_HIGH, [
-				'Drink',
-			]);
-			hasConsumedStaminaDoseAtBank = true;
-			return true;
-		}
-
-		const staminaPotionId = getPreferredStaminaPotionIdInBank();
-		if (staminaPotionId === null) {
-			logError(
-				`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions found in bank.`,
-			);
-			hasCompletedStaminaPrepAtBank = true;
-			return false;
-		}
-
-		logInteractWithBank(
-			`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%. Withdrawing one stamina potion dose item (${staminaPotionId}).`,
-		);
-		bot.bank.withdrawWithId(staminaPotionId);
-		return true;
-	}
-
 	if (bot.inventory.containsAnyIds(STAMINA_POTION_IDS_LOW_TO_HIGH)) {
-		for (const potionId of STAMINA_POTION_IDS_LOW_TO_HIGH) {
-			if (bot.inventory.containsId(potionId)) {
-				logInteractWithBank(
-					'Banking leftover stamina potion after drink.',
-				);
-				bot.bank.depositAllWithId(potionId);
-				return true;
-			}
-		}
+		logInteractWithBank(
+			'Stamina potion already in inventory. Keeping it for travel-to-altar consumption.',
+		);
+		hasCompletedStaminaPrepAtBank = true;
+		return false;
 	}
 
-	if (bot.inventory.containsId(EMPTY_VIAL_ITEM_ID)) {
-		logInteractWithBank('Banking empty vial after stamina drink.');
-		bot.bank.depositAllWithId(EMPTY_VIAL_ITEM_ID);
-		return true;
+	const staminaPotionId = getPreferredStaminaPotionIdInBank();
+	if (staminaPotionId === null) {
+		logError(
+			`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions found in bank.`,
+		);
+		hasCompletedStaminaPrepAtBank = true;
+		return false;
 	}
 
+	logInteractWithBank(
+		`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%. Withdrawing one stamina potion dose item (${staminaPotionId}) to consume during travel.`,
+	);
+	bot.bank.withdrawWithId(staminaPotionId);
 	hasCompletedStaminaPrepAtBank = true;
-	return false;
+	return true;
 };
 
 const isColossalOnlyConfigured = (): boolean =>

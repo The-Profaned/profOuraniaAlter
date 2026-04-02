@@ -22,7 +22,7 @@ export type RunRestoreOption =
 	| 'Vile Vigour'
 	| 'Desert Amulet';
 
-export type PohAccessOption = 'Tablet' | 'Construction Cape';
+export type PohAccessOption = 'Tablet' | 'Construction Cape' | 'Spellbook Swap';
 
 export type StandardPouchKey = 'SMALL' | 'MEDIUM' | 'LARGE' | 'GIANT';
 

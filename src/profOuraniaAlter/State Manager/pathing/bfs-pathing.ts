@@ -15,6 +15,9 @@ export type BfsRouteState = {
 	destinationTile: Tile | null;
 	lastClickedDestination: Tile | null;
 	clickIssued: boolean;
+	lastObservedPlayerTile: Tile | null;
+	lastMovementTick: number;
+	lastClickTick: number;
 };
 
 export type WalkRouteWithBfsOptions = {
@@ -28,6 +31,7 @@ export type WalkRouteWithBfsOptions = {
 };
 
 const RECOMPUTE_INTERVAL_TICKS = 8;
+const STUCK_REISSUE_TICKS = 5;
 const PATH_MAX_EXPANSIONS = 5000;
 
 const toTileKey = (tile: Tile): string => `${tile.x},${tile.y},${tile.plane}`;
@@ -83,7 +87,13 @@ export const createBfsRouteState = (): BfsRouteState => ({
 	destinationTile: null,
 	lastClickedDestination: null,
 	clickIssued: false,
+	lastObservedPlayerTile: null,
+	lastMovementTick: 0,
+	lastClickTick: 0,
 });
+
+const isSameTile = (left: Tile, right: Tile): boolean =>
+	left.x === right.x && left.y === right.y && left.plane === right.plane;
 
 const getPlayerTile = (): Tile | null => {
 	const player = client.getLocalPlayer();
@@ -322,6 +332,9 @@ const resetRouteState = (routeState: BfsRouteState): void => {
 	routeState.destinationTile = null;
 	routeState.lastClickedDestination = null;
 	routeState.clickIssued = false;
+	routeState.lastObservedPlayerTile = null;
+	routeState.lastMovementTick = 0;
+	routeState.lastClickTick = 0;
 };
 
 export const walkRouteWithBfs = (options: WalkRouteWithBfsOptions): boolean => {
@@ -383,12 +396,30 @@ export const walkRouteWithBfs = (options: WalkRouteWithBfsOptions): boolean => {
 		return false;
 	}
 
+	if (
+		!options.routeState.lastObservedPlayerTile ||
+		!isSameTile(options.routeState.lastObservedPlayerTile, playerTile)
+	) {
+		options.routeState.lastObservedPlayerTile = playerTile;
+		options.routeState.lastMovementTick = options.currentTick;
+	}
+
+	if (
+		options.routeState.clickIssued &&
+		options.currentTick - options.routeState.lastMovementTick >
+			STUCK_REISSUE_TICKS
+	) {
+		// Player appears stuck after click; re-issue movement toward the same destination.
+		options.routeState.clickIssued = false;
+	}
+
 	if (!options.routeState.clickIssued) {
 		bot.walking.walkToTrueWorldPoint(
 			options.routeState.destinationTile.x,
 			options.routeState.destinationTile.y,
 		);
 		options.routeState.clickIssued = true;
+		options.routeState.lastClickTick = options.currentTick;
 		options.routeState.lastClickedDestination =
 			options.routeState.destinationTile;
 		options.onRouteBuilt?.();

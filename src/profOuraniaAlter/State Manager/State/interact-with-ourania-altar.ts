@@ -5,6 +5,7 @@ import {
 } from '../logging.js';
 import { INTERACTIONS, OBJECT_IDS, OBJECT_NAMES } from '../constants.js';
 import {
+	MainStates,
 	state,
 	type PouchKey,
 	getRunRestoreTargetState,
@@ -21,6 +22,9 @@ const ESSENCE_ITEM_IDS: number[] = [
 	net.runelite.api.ItemID.PURE_ESSENCE,
 	net.runelite.api.ItemID.DAEYALT_ESSENCE,
 ];
+
+const MAGIC_LEVEL_FOR_HOUSE_TELEPORT = 96;
+const WORKFLOW_STEP_PENDING_POH_MAGIC_SWAP = 90;
 
 const getInventoryEssenceCount = (): number =>
 	bot.inventory.getQuantityOfAllIds(ESSENCE_ITEM_IDS);
@@ -58,6 +62,30 @@ const resetAltarTracking = (): void => {
 
 const routeAfterCrafting = (): void => {
 	resetAltarTracking();
+
+	if (
+		state.behaviour.runRestoreOption === 'PoH' &&
+		state.settings.pohAccessOption === 'Spellbook Swap'
+	) {
+		const magicLevel = client.getRealSkillLevel(
+			net.runelite.api.Skill.MAGIC,
+		);
+		if (magicLevel < MAGIC_LEVEL_FOR_HOUSE_TELEPORT) {
+			logError(
+				`PoH access is Spellbook Swap, but Magic level is ${magicLevel}. Requires ${MAGIC_LEVEL_FOR_HOUSE_TELEPORT}.`,
+			);
+			state.mainState = MainStates.IDLE;
+			return;
+		}
+
+		logInteractWithOuraniaAltar(
+			'PoH access is Spellbook Swap. Transitioning to SWAP_MAGE_BOOK from altar completion.',
+		);
+		state.workflowStep = WORKFLOW_STEP_PENDING_POH_MAGIC_SWAP;
+		state.mainState = MainStates.SWAP_MAGE_BOOK;
+		return;
+	}
+
 	state.mainState = getRunRestoreTargetState();
 };
 
