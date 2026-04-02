@@ -35,6 +35,49 @@ const toTileKey = (tile: Tile): string => `${tile.x},${tile.y},${tile.plane}`;
 export const toWorldPoint = (tile: Tile): net.runelite.api.coords.WorldPoint =>
 	new net.runelite.api.coords.WorldPoint(tile.x, tile.y, tile.plane);
 
+const isTileInLoadedScene = (tile: Tile): boolean => {
+	const topLevelWorldView = client.getTopLevelWorldView();
+	if (!topLevelWorldView) return false;
+
+	const worldView = client.getWorldView(topLevelWorldView.getId());
+	if (!worldView) return false;
+
+	const localPoint = net.runelite.api.coords.LocalPoint.fromWorld(
+		worldView,
+		toWorldPoint(tile),
+	);
+	if (!localPoint) return false;
+
+	const sceneX = localPoint.getSceneX?.();
+	const sceneY = localPoint.getSceneY?.();
+
+	return (
+		typeof sceneX === 'number' &&
+		typeof sceneY === 'number' &&
+		sceneX >= 0 &&
+		sceneY >= 0 &&
+		sceneX < 104 &&
+		sceneY < 104
+	);
+};
+
+const getBestClickDestinationFromPath = (
+	path: Tile[],
+	goalCenter: Tile,
+): Tile => {
+	if (isTileInLoadedScene(goalCenter)) {
+		return goalCenter;
+	}
+
+	for (let index = path.length - 1; index >= 0; index -= 1) {
+		if (isTileInLoadedScene(path[index])) {
+			return path[index];
+		}
+	}
+
+	return path[Math.min(path.length - 1, 1)];
+};
+
 export const createBfsRouteState = (): BfsRouteState => ({
 	cachedRoute: null,
 	destinationTile: null,
@@ -307,7 +350,10 @@ export const walkRouteWithBfs = (options: WalkRouteWithBfsOptions): boolean => {
 			return false;
 		}
 
-		const destinationTile = options.goalCenter;
+		const destinationTile = getBestClickDestinationFromPath(
+			path,
+			options.goalCenter,
+		);
 		options.routeState.cachedRoute = {
 			anchors: path,
 			path,
