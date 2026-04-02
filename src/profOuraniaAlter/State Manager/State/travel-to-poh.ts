@@ -1,9 +1,243 @@
 import { MainStates, state } from '../script-state.js';
-import { logTravelToPoh } from '../logging.js';
+import { logError, logTravelToPoh } from '../logging.js';
+import { OURANIA_DUNGEON_REGION_ID } from '../constants.js';
+
+const CONSTRUCTION_CAPE_IDS: number[] = [
+	net.runelite.api.ItemID.CONSTRUCT_CAPE,
+	net.runelite.api.ItemID.CONSTRUCT_CAPET,
+];
+const HOUSE_TAB_ID = net.runelite.api.ItemID.TELEPORT_TO_HOUSE;
+
+const CONSTRUCTION_CAPE_POH_OPTION = 'Tele to POH';
+const HOUSE_TAB_BREAK_OPTION = 'Break';
+const MAGIC_LEVEL_FOR_HOUSE_TELEPORT = 96;
+const WORKFLOW_STEP_PENDING_MAGIC_SWAP = 90;
+const POOL_DRINK_OPTION = 'Drink';
+const POOL_INTERACT_RETRY_TICKS = 10;
+
+const POH_POOL_NAMES: string[] = [
+	'Revitalisation pool',
+	'Rejuvenation pool',
+	'Fancy rejuvenation pool',
+	'Ornate rejuvenation pool',
+];
+
+let hasLoggedTravelStart = false;
+let hasLoggedWaitingForTeleport = false;
+let hasLoggedWaitingForRunRestore = false;
+let lastPoolClickTick = -1;
+
+const getRegionIdFromLocation = (
+	location: net.runelite.api.coords.WorldPoint,
+): number => ((location.getX() >> 6) << 8) + (location.getY() >> 6);
+
+const resetTravelToPohTracking = (): void => {
+	hasLoggedTravelStart = false;
+	hasLoggedWaitingForTeleport = false;
+	hasLoggedWaitingForRunRestore = false;
+	lastPoolClickTick = -1;
+	state.workflowStep = 0;
+};
+
+const getRunEnergyPercent = (): number => {
+	const rawRunEnergy = Number(client.getEnergy());
+	return rawRunEnergy > 100 ? Math.floor(rawRunEnergy / 100) : rawRunEnergy;
+};
+
+const hasConstructionCapeInInventoryOrEquipment = (): boolean =>
+	CONSTRUCTION_CAPE_IDS.some(
+		(itemId) =>
+			bot.inventory.containsId(itemId) ||
+			bot.equipment.containsId(itemId),
+	);
+
+const tryUseConstructionCapePohTeleport = (): boolean => {
+	const inventoryCapeId =
+		CONSTRUCTION_CAPE_IDS.find((itemId) =>
+			bot.inventory.containsId(itemId),
+		) ?? null;
+	if (inventoryCapeId !== null) {
+		logTravelToPoh(
+			'Using Construction cape from inventory with Tele to POH option.',
+		);
+		bot.inventory.interactWithIds(
+			[inventoryCapeId],
+			[CONSTRUCTION_CAPE_POH_OPTION],
+		);
+		return true;
+	}
+
+	const equippedCapeId =
+		CONSTRUCTION_CAPE_IDS.find((itemId) =>
+			bot.equipment.containsId(itemId),
+		) ?? null;
+	if (equippedCapeId === null) {
+		return false;
+	}
+
+	const equipmentApi = bot.equipment as unknown as {
+		interactWithIds?: (itemIds: number[], options: string[]) => number;
+	};
+	if (!equipmentApi.interactWithIds) {
+		logError(
+			'Construction cape is equipped, but equipment interact API is unavailable.',
+		);
+		return false;
+	}
+
+	logTravelToPoh(
+		'Using Construction cape from equipment with Tele to POH option.',
+	);
+	equipmentApi.interactWithIds(
+		[equippedCapeId],
+		[CONSTRUCTION_CAPE_POH_OPTION],
+	);
+	return true;
+};
 
 export const TravelToPoh = (): void => {
-	logTravelToPoh('Traveling to PoH.');
+	if (!hasLoggedTravelStart) {
+		logTravelToPoh('Traveling to PoH.');
+		hasLoggedTravelStart = true;
+	}
 
-	// TODO: Add travel logic for house-based run restoration.
-	state.mainState = MainStates.USE_PRAYER_ALTAR;
+	const player = client.getLocalPlayer();
+	if (!player) return;
+
+	const playerLocation = player.getWorldLocation();
+	if (!playerLocation) return;
+
+	const regionId = getRegionIdFromLocation(playerLocation);
+
+	switch (state.workflowStep) {
+		case 0: {
+			const constructionLevel = client.getRealSkillLevel(
+				net.runelite.api.Skill.CONSTRUCTION,
+			);
+			if (
+				constructionLevel >= 99 &&
+				hasConstructionCapeInInventoryOrEquipment()
+			) {
+				if (!tryUseConstructionCapePohTeleport()) {
+					return;
+				}
+				hasLoggedWaitingForTeleport = false;
+				state.workflowStep = 1;
+				return;
+			}
+
+			if (bot.inventory.containsId(HOUSE_TAB_ID)) {
+				logTravelToPoh('Using Teleport to House tablet (Break).');
+				bot.inventory.interactWithIds(
+					[HOUSE_TAB_ID],
+					[HOUSE_TAB_BREAK_OPTION],
+				);
+				hasLoggedWaitingForTeleport = false;
+				state.workflowStep = 1;
+				return;
+			}
+
+			const magicLevel = client.getRealSkillLevel(
+				net.runelite.api.Skill.MAGIC,
+			);
+			if (magicLevel >= MAGIC_LEVEL_FOR_HOUSE_TELEPORT) {
+				logTravelToPoh(
+					'No Construction cape/tablet path available. Routing to SWAP_MAGE_BOOK for spellbook swap + Teleport to House.',
+				);
+				state.workflowStep = WORKFLOW_STEP_PENDING_MAGIC_SWAP;
+				state.mainState = MainStates.SWAP_MAGE_BOOK;
+				return;
+			}
+
+			logError(
+				'Missing PoH travel method: requires (99 Construction + Construction cape in inventory/equipment), Teleport to House tablet, or 96 Magic for spell route.',
+			);
+			return;
+		}
+		case 1: {
+			if (regionId === OURANIA_DUNGEON_REGION_ID) {
+				if (!hasLoggedWaitingForTeleport) {
+					logTravelToPoh('Waiting for PoH teleport to complete.');
+					hasLoggedWaitingForTeleport = true;
+				}
+				return;
+			}
+
+			hasLoggedWaitingForTeleport = false;
+			logTravelToPoh(
+				'PoH teleport detected. Looking for an available rejuvenation pool.',
+			);
+			state.workflowStep = 2;
+			return;
+		}
+		case 2: {
+			const pohPool =
+				bot.objects.getTileObjectsWithNames(POH_POOL_NAMES)[0];
+			if (!pohPool) {
+				logError(
+					`No supported PoH pool found. Expected one of: ${POH_POOL_NAMES.join(', ')}.`,
+				);
+				return;
+			}
+
+			logTravelToPoh('Interacting with PoH pool for run restore.');
+			bot.objects.interactSuppliedObject(pohPool, POOL_DRINK_OPTION);
+			lastPoolClickTick = state.gameTick;
+			hasLoggedWaitingForRunRestore = false;
+			state.workflowStep = 3;
+			return;
+		}
+		case 3: {
+			const runEnergy = getRunEnergyPercent();
+			if (runEnergy >= 100) {
+				logTravelToPoh(
+					'Run energy restored to 100% in PoH. Transitioning to travel to bank.',
+				);
+				resetTravelToPohTracking();
+				state.mainState = MainStates.TRAVEL_TO_BANK;
+				return;
+			}
+
+			if (!hasLoggedWaitingForRunRestore) {
+				logTravelToPoh(
+					`Waiting for PoH pool restore (current run energy ${runEnergy}%).`,
+				);
+				hasLoggedWaitingForRunRestore = true;
+			}
+
+			if (lastPoolClickTick < 0) {
+				lastPoolClickTick = state.gameTick;
+			}
+
+			if (
+				state.gameTick - lastPoolClickTick <
+				POOL_INTERACT_RETRY_TICKS
+			) {
+				return;
+			}
+
+			const pohPool =
+				bot.objects.getTileObjectsWithNames(POH_POOL_NAMES)[0];
+			if (!pohPool) {
+				logError(
+					`Could not find PoH pool for retry. Expected one of: ${POH_POOL_NAMES.join(', ')}.`,
+				);
+				return;
+			}
+
+			logTravelToPoh(
+				`Run energy still below 100% after ${POOL_INTERACT_RETRY_TICKS} ticks. Re-clicking pool.`,
+			);
+			bot.objects.interactSuppliedObject(pohPool, POOL_DRINK_OPTION);
+			lastPoolClickTick = state.gameTick;
+			return;
+		}
+		default: {
+			logError(
+				`TravelToPoh: unexpected workflowStep ${state.workflowStep}. Resetting.`,
+			);
+			resetTravelToPohTracking();
+			return;
+		}
+	}
 };
