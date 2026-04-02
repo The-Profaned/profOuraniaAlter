@@ -76,7 +76,7 @@ export const TravelToBank = (): void => {
 
 			logTravelToBank('Casting Ourania Teleport spell.');
 			try {
-				bot.magic.cast('OURANIA_TELEPORT', 0);
+				bot.magic.cast('OURANIA_TELEPORT');
 				hasLoggedWaitForTeleportRegion = false;
 				state.workflowStep = 1;
 			} catch (error) {

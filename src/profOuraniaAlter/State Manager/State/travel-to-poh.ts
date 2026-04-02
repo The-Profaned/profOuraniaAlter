@@ -14,18 +14,20 @@ const MAGIC_LEVEL_FOR_HOUSE_TELEPORT = 96;
 const WORKFLOW_STEP_PENDING_MAGIC_SWAP = 90;
 const POOL_DRINK_OPTION = 'Drink';
 const POOL_INTERACT_RETRY_TICKS = 10;
+const POOL_SEARCH_GRACE_TICKS = 7;
 
 const POH_POOL_NAMES: string[] = [
-	'Revitalisation pool',
-	'Rejuvenation pool',
-	'Fancy rejuvenation pool',
-	'Ornate rejuvenation pool',
+	'Pool of Revitalisation',
+	'Pool of Rejuvenation',
+	'Fancy pool of Rejuvenation',
+	'Ornate pool of Rejuvenation',
 ];
 
 let hasLoggedTravelStart = false;
 let hasLoggedWaitingForTeleport = false;
 let hasLoggedWaitingForRunRestore = false;
 let lastPoolClickTick = -1;
+let pohArrivalTick = -1;
 
 const getRegionIdFromLocation = (
 	location: net.runelite.api.coords.WorldPoint,
@@ -36,6 +38,7 @@ const resetTravelToPohTracking = (): void => {
 	hasLoggedWaitingForTeleport = false;
 	hasLoggedWaitingForRunRestore = false;
 	lastPoolClickTick = -1;
+	pohArrivalTick = -1;
 	state.workflowStep = 0;
 };
 
@@ -167,6 +170,7 @@ export const TravelToPoh = (): void => {
 			logTravelToPoh(
 				'PoH teleport detected. Looking for an available rejuvenation pool.',
 			);
+			pohArrivalTick = state.gameTick;
 			state.workflowStep = 2;
 			return;
 		}
@@ -174,6 +178,12 @@ export const TravelToPoh = (): void => {
 			const pohPool =
 				bot.objects.getTileObjectsWithNames(POH_POOL_NAMES)[0];
 			if (!pohPool) {
+				if (
+					pohArrivalTick >= 0 &&
+					state.gameTick - pohArrivalTick < POOL_SEARCH_GRACE_TICKS
+				) {
+					return;
+				}
 				logError(
 					`No supported PoH pool found. Expected one of: ${POH_POOL_NAMES.join(', ')}.`,
 				);

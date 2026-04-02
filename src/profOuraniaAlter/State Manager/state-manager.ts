@@ -17,8 +17,11 @@ import { refreshRunePouchRuntime } from './rune-pouch-varbits.js';
 const runScriptStartSync: () => void = determineScriptStartLocationState;
 
 export const stateManager = (): void => {
-	if (!LOAD_DEBUG_UI_TAB) {
-		runScriptStartSync();
+	if (!state.scriptInitalized) {
+		if (!LOAD_DEBUG_UI_TAB) {
+			runScriptStartSync();
+		}
+		state.scriptInitalized = true;
 	}
 
 	const startingState = state.mainState;
