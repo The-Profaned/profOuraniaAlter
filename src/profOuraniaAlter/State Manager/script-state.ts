@@ -138,26 +138,42 @@ export type OuraniaAlterScriptState = State & {
 	};
 };
 
+const getRunEnergyPercent = (): number => {
+	const rawRunEnergy = Number(client.getEnergy());
+	return rawRunEnergy > 100 ? Math.floor(rawRunEnergy / 100) : rawRunEnergy;
+};
+
 /**
- * Returns the correct post-crafting run-restore state based on the player's
- * configured restore option. 'No Restore' and 'Stamina Potions' always route
- * to bank; the other options route to their respective unimplemented states
- * (PoH / Vile Vigour / Desert Amulet) which will be handled when coded.
+ * Returns the post-crafting route based on the selected run restore option and
+ * current resource levels.
  */
 export const getRunRestoreTargetState = (): MainStates => {
+	const runEnergyPercent = getRunEnergyPercent();
+	const missingRunEnergy = 100 - runEnergyPercent;
+	const currentPrayerPoints = client.getBoostedSkillLevel(
+		net.runelite.api.Skill.PRAYER,
+	);
+
 	switch (state.behaviour.runRestoreOption) {
 		case 'No Restore':
 		case 'Stamina Potions': {
 			return MainStates.TRAVEL_TO_BANK;
 		}
 		case 'PoH': {
-			return MainStates.TRAVEL_TO_POH;
+			return runEnergyPercent <= 25
+				? MainStates.TRAVEL_TO_POH
+				: MainStates.TRAVEL_TO_BANK;
 		}
 		case 'Vile Vigour': {
-			return MainStates.TRAVEL_TO_PRAYER_ALTAR;
+			return runEnergyPercent < 25 ||
+				missingRunEnergy >= currentPrayerPoints
+				? MainStates.TRAVEL_TO_PRAYER_ALTAR
+				: MainStates.TRAVEL_TO_BANK;
 		}
 		case 'Desert Amulet': {
-			return MainStates.TRAVEL_TO_DESERT;
+			return runEnergyPercent <= 25
+				? MainStates.TRAVEL_TO_DESERT
+				: MainStates.TRAVEL_TO_BANK;
 		}
 		default: {
 			return MainStates.TRAVEL_TO_BANK;

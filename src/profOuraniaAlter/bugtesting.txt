@@ -14,8 +14,7 @@ x implimented but testing
 - vile vigour interaction. should trigger to use the restore option when run energy missing = current prayer total 
     minimum should be 25% run energy 
 - PoH option should trigger restore on 25% run energy
-- if selecting stamina potions, stop script when stamina potions run out fully from the bank 
-
++ if selecting stamina potions, stop script when stamina potions run out fully from the bank 
 
 - build a visual ui and not the default on screen for players
     how many essence used 
