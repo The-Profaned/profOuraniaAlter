@@ -189,9 +189,9 @@ export const createBehaviourTab = (
 	pouchSelectionPanel.add(mediumCheck);
 	pouchSelectionPanel.add(giantCheck);
 
-	// If Colossal is unavailable, default to pouch selection being open.
-	const showPouchSelectionByDefault: boolean = !canUseColossal;
-	pouchSelectionPanel.setVisible(showPouchSelectionByDefault);
+	const showPouchSelectionOnStartup: boolean =
+		!colossalPouchCheck.isSelected();
+	pouchSelectionPanel.setVisible(showPouchSelectionOnStartup);
 	setPouchOptionsEnabled(!colossalPouchCheck.isSelected());
 
 	if (!colossalPouchCheck.isSelected()) {
@@ -234,7 +234,7 @@ export const createBehaviourTab = (
 		panel.repaint();
 	});
 
-	onPouchVisibilityChange?.(showPouchSelectionByDefault);
+	onPouchVisibilityChange?.(showPouchSelectionOnStartup);
 
 	panel.add(row1);
 	panel.add(javax.swing.Box.createVerticalStrut(4));
