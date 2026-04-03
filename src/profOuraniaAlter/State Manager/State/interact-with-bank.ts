@@ -25,12 +25,15 @@ const DEPOSIT_INVENTORY_WIDGET_OPCODE = 57;
 const DEPOSIT_INVENTORY_WIDGET_PARAM0 = -1;
 const BANK_OPEN_INVENTORY_WIDGET_ID = 983043;
 const FILL_ACTION_IDENTIFIER = 9;
-const STAMINA_POTION_IDS_LOW_TO_HIGH: number[] = [
-	net.runelite.api.ItemID.STAMINA_POTION1,
-	net.runelite.api.ItemID.STAMINA_POTION2,
-	net.runelite.api.ItemID.STAMINA_POTION3,
-	net.runelite.api.ItemID.STAMINA_POTION4,
-];
+const STAMINA_POTION_ORDER_LOW_TO_HIGH = [
+	{ dose: 1, itemId: net.runelite.api.ItemID.STAMINA_POTION1 },
+	{ dose: 2, itemId: net.runelite.api.ItemID.STAMINA_POTION2 },
+	{ dose: 3, itemId: net.runelite.api.ItemID.STAMINA_POTION3 },
+	{ dose: 4, itemId: net.runelite.api.ItemID.STAMINA_POTION4 },
+] as const;
+
+const STAMINA_POTION_IDS_LOW_TO_HIGH: number[] =
+	STAMINA_POTION_ORDER_LOW_TO_HIGH.map((entry) => entry.itemId);
 
 let selectedBankingEssenceId: number | null = null;
 let hasLoggedBankStateStart = false;
@@ -129,16 +132,6 @@ const getRunEnergyPercent = (): number => {
 	return rawRunEnergy > 100 ? Math.floor(rawRunEnergy / 100) : rawRunEnergy;
 };
 
-const getPreferredStaminaPotionIdInBank = (): number | null => {
-	for (const potionId of STAMINA_POTION_IDS_LOW_TO_HIGH) {
-		if (bot.bank.getQuantityOfId(potionId) > 0) {
-			return potionId;
-		}
-	}
-
-	return null;
-};
-
 const handleStaminaPrepBeforeEssenceFill = (): boolean => {
 	if (state.behaviour.runRestoreOption !== 'Stamina Potions') {
 		return false;
@@ -162,19 +155,29 @@ const handleStaminaPrepBeforeEssenceFill = (): boolean => {
 		return false;
 	}
 
-	const staminaPotionId = getPreferredStaminaPotionIdInBank();
-	if (staminaPotionId === null) {
-		logError(
-			`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions found in bank.`,
+	for (const staminaDoseOption of STAMINA_POTION_ORDER_LOW_TO_HIGH) {
+		const availableInBank = bot.bank.getQuantityOfId(
+			staminaDoseOption.itemId,
 		);
+		if (availableInBank <= 0) {
+			continue;
+		}
+
+		logInteractWithBank(
+			`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%. Withdrawing one ${staminaDoseOption.dose}-dose stamina potion (item ${staminaDoseOption.itemId}) for travel-to-altar consumption.`,
+		);
+		bot.bank.withdrawWithId(staminaDoseOption.itemId);
 		hasCompletedStaminaPrepAtBank = true;
-		return false;
+		return true;
 	}
 
-	logInteractWithBank(
-		`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%. Withdrawing one stamina potion dose item (${staminaPotionId}) to consume during travel.`,
+	logError(
+		`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions found in bank after checking doses in order: 1-dose, 2-dose, 3-dose, 4-dose.`,
 	);
-	bot.bank.withdrawWithId(staminaPotionId);
+	const missingStaminaMessage = `Run restore is set to Stamina Potions and run energy is below ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions were found in bank. Add stamina potions or change Run Restore option, then restart the script.`;
+	log.printGameMessage(missingStaminaMessage);
+	state.mainState = MainStates.IDLE;
+	bot.terminate();
 	hasCompletedStaminaPrepAtBank = true;
 	return true;
 };
@@ -345,6 +348,8 @@ const resolveSelectedEssenceId = (): number => {
 };
 
 export const InteractWithBank = (): void => {
+	bot.breakHandler.setBreakHandlerStatus(false);
+
 	if (!hasLoggedBankStateStart) {
 		logInteractWithBank('Interacting with bank.');
 		hasLoggedBankStateStart = true;
