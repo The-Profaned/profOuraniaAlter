@@ -3,9 +3,6 @@ export const DEFAULT_STATE: string = 'TRAVEL_TO_OURANIA_ALTAR';
 export const BANK_SUBSTATE_REFILL_RUNES: string = 'REFILL_BANK_RUNES';
 export const BANKING_RUNE_MINIMUM_THRESHOLD: number = 40;
 
-// Set to false to completely hide the Debug tab and re-enable normal start sync.
-export const LOAD_DEBUG_UI_TAB: boolean = true;
-
 export const OURANIA_DUNGEON_REGION_ID: number = 12119;
 
 const TARGETS = {
@@ -96,4 +93,5 @@ export const NPC_CONTACT_DIALOG = {
 
 // ============ TEST MODE (EASY TO DELETE) ============
 export const TEST_MODE_ENABLED: boolean = false;
+export const LOAD_DEBUG_UI_TAB: boolean = true;
 // ====================================================
