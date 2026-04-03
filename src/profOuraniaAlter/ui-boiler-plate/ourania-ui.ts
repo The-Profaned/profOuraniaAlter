@@ -18,12 +18,22 @@ let startFrame: javax.swing.JFrame | null = null;
 
 // Tab Sizes
 const SETTINGS_TAB_FRAME_SIZE_COLLAPSED = new java.awt.Dimension(480, 310);
+const SETTINGS_TAB_FRAME_SIZE_FOOD_EXPANDED = new java.awt.Dimension(480, 340);
 const SETTINGS_TAB_FRAME_SIZE_POH_EXPANDED = new java.awt.Dimension(480, 340);
+const SETTINGS_TAB_FRAME_SIZE_FOOD_POH_EXPANDED = new java.awt.Dimension(
+	480,
+	370,
+);
 const SETTINGS_TAB_FRAME_SIZE_RUNE_POUCH_EXPANDED = new java.awt.Dimension(
 	480,
 	355,
 );
+const SETTINGS_TAB_FRAME_SIZE_FOOD_RUNE_POUCH_EXPANDED = new java.awt.Dimension(
+	480,
+	385,
+);
 const SETTINGS_TAB_FRAME_SIZE_FULL = new java.awt.Dimension(480, 385);
+const SETTINGS_TAB_FRAME_SIZE_FOOD_FULL = new java.awt.Dimension(480, 415);
 const BEHAVIOUR_TAB_FRAME_SIZE_COLLAPSED = new java.awt.Dimension(480, 280);
 const BEHAVIOUR_TAB_FRAME_SIZE_EXPANDED = new java.awt.Dimension(480, 380);
 const DEBUG_TAB_FRAME_SIZE = new java.awt.Dimension(480, 330);
@@ -32,6 +42,7 @@ const INFO_TAB_FRAME_SIZE = new java.awt.Dimension(480, 400);
 let showBehaviourPouchSelection = false;
 let showSettingsPohAccess = false;
 let showSettingsRunePouchOptions = false;
+let showSettingsEmergencyFood = false;
 
 const disposeStartFrame = (): void => {
 	if (!startFrame) return;
@@ -113,16 +124,36 @@ const getFrameSizeForTabIndex = (tabIndex: number): java.awt.Dimension => {
 				: BEHAVIOUR_TAB_FRAME_SIZE_COLLAPSED;
 		}
 		case 1: {
+			if (
+				showSettingsEmergencyFood &&
+				showSettingsPohAccess &&
+				showSettingsRunePouchOptions
+			) {
+				return SETTINGS_TAB_FRAME_SIZE_FOOD_FULL;
+			}
+
 			if (showSettingsPohAccess && showSettingsRunePouchOptions) {
 				return SETTINGS_TAB_FRAME_SIZE_FULL;
+			}
+
+			if (showSettingsEmergencyFood && showSettingsRunePouchOptions) {
+				return SETTINGS_TAB_FRAME_SIZE_FOOD_RUNE_POUCH_EXPANDED;
 			}
 
 			if (showSettingsRunePouchOptions) {
 				return SETTINGS_TAB_FRAME_SIZE_RUNE_POUCH_EXPANDED;
 			}
 
+			if (showSettingsEmergencyFood && showSettingsPohAccess) {
+				return SETTINGS_TAB_FRAME_SIZE_FOOD_POH_EXPANDED;
+			}
+
 			if (showSettingsPohAccess) {
 				return SETTINGS_TAB_FRAME_SIZE_POH_EXPANDED;
+			}
+
+			if (showSettingsEmergencyFood) {
+				return SETTINGS_TAB_FRAME_SIZE_FOOD_EXPANDED;
 			}
 
 			return SETTINGS_TAB_FRAME_SIZE_COLLAPSED;
@@ -244,6 +275,7 @@ const createStartFrame = (): javax.swing.JFrame => {
 	const settingsTab = createSettingsTab((layoutState) => {
 		showSettingsPohAccess = layoutState.showPohAccess;
 		showSettingsRunePouchOptions = layoutState.showRunePouchOptions;
+		showSettingsEmergencyFood = layoutState.showEmergencyFood;
 
 		if (tabbedPane.getSelectedIndex() === 1) {
 			applyFrameSizeForTab(frame, 1);
@@ -260,6 +292,9 @@ const createStartFrame = (): javax.swing.JFrame => {
 			},
 			(runRestoreOption) => {
 				settingsTab.setPohAccessVisible(runRestoreOption === 'PoH');
+			},
+			(emergencyFoodEnabled) => {
+				settingsTab.setEmergencyFoodVisible(emergencyFoodEnabled);
 			},
 		),
 	);

@@ -9,7 +9,63 @@ const STAMINA_POTION_IDS_LOW_TO_HIGH: number[] = [
 	net.runelite.api.ItemID.STAMINA_POTION4,
 ];
 
+const FOOD_OPTION_TO_ITEM_ID = {
+	Tuna: net.runelite.api.ItemID.TUNA,
+	Lobster: net.runelite.api.ItemID.LOBSTER,
+	Swordfish: net.runelite.api.ItemID.SWORDFISH,
+	Karambwan: net.runelite.api.ItemID.COOKED_KARAMBWAN,
+	MantaRay: net.runelite.api.ItemID.MANTA_RAY,
+	Shark: net.runelite.api.ItemID.SHARK,
+} as const;
+
+const getEmergencyFoodLookupKey = (): keyof typeof FOOD_OPTION_TO_ITEM_ID =>
+	state.settings.emergencyFoodOption === 'Manta Ray'
+		? 'MantaRay'
+		: state.settings.emergencyFoodOption;
+
 let hasConsumedStaminaDuringTravel = false;
+let hasConsumedEmergencyFoodDuringTravel = false;
+
+const isEmergencyFoodHpThresholdMet = (): boolean => {
+	const currentHp = client.getBoostedSkillLevel(
+		net.runelite.api.Skill.HITPOINTS,
+	);
+	const maxHp = client.getRealSkillLevel(net.runelite.api.Skill.HITPOINTS);
+	if (maxHp <= 0) return false;
+
+	const fortyPercentThreshold = Math.floor(maxHp * 0.4);
+	return currentHp <= fortyPercentThreshold || currentHp < 10;
+};
+
+const maybeConsumeEmergencyFoodDuringTravel = (): boolean => {
+	if (!state.behaviour.emergencyFoodEnabled) {
+		hasConsumedEmergencyFoodDuringTravel = false;
+		return false;
+	}
+
+	if (hasConsumedEmergencyFoodDuringTravel || bot.bank.isOpen()) {
+		return false;
+	}
+
+	if (!isEmergencyFoodHpThresholdMet()) {
+		hasConsumedEmergencyFoodDuringTravel = true;
+		return false;
+	}
+
+	const selectedFoodId =
+		FOOD_OPTION_TO_ITEM_ID[getEmergencyFoodLookupKey()];
+	if (!bot.inventory.containsId(selectedFoodId)) {
+		hasConsumedEmergencyFoodDuringTravel = true;
+		return false;
+	}
+
+	logTravelToOuraniaAltar(
+		`Emergency food found in inventory. Eating one ${state.settings.emergencyFoodOption} while traveling to altar.`,
+	);
+	bot.inventory.interactWithIds([selectedFoodId], ['Eat']);
+	hasConsumedEmergencyFoodDuringTravel = true;
+	return true;
+};
 
 export const TravelToOuraniaAltar = (): void => {
 	if (state.behaviour.runRestoreOption !== 'Stamina Potions') {
@@ -29,9 +85,14 @@ export const TravelToOuraniaAltar = (): void => {
 		return;
 	}
 
+	if (maybeConsumeEmergencyFoodDuringTravel()) {
+		return;
+	}
+
 	const reachedOuraniaAltarArea = walkToOuraniaAltarWithBfs();
 	if (!reachedOuraniaAltarArea) return;
 
 	hasConsumedStaminaDuringTravel = false;
+	hasConsumedEmergencyFoodDuringTravel = false;
 	state.mainState = MainStates.INTERACT_WITH_OURANIA_ALTAR;
 };

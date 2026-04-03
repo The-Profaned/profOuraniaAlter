@@ -1,7 +1,21 @@
 testing bugs:
+- need added
+x implimented but testing
++ fixed
 
-- randomly will leave last withdraw of essence and not withdraw. before moving to ourania alter verify inventory is correct.
++ randomly will leave last withdraw of essence and not withdraw. before moving to ourania alter verify inventory is correct.
 - rune pouch handling for non banking rune (if full 16k empty to all but 1)
 - banking rune in rune pouch needs refreshed to 16k when low
-- if no banking runes exist in inventory or pouch (end script and explain issue)
-- npc contact not reading dark mage correctly anymore?
++ if no banking runes exist in inventory or pouch (end script and explain issue)
++ npc contact not reading dark mage correctly anymore?
++ just like with filling the pouches, emptying the pouches for crafting should track the same amount of runes 
+- needing a food option incase the player gets stupid unlucky with mobs.
+    food selection + eat mechanic similar to stamina potion to keep the player moving
+
+- build a visual ui and not the default on screen for players
+    how many essence used 
+    how many total runes crafted (meme)
+    banking runes left 
+    current state
+    current action 
+

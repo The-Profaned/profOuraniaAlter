@@ -49,6 +49,9 @@ const getActivePouchForNow = (): PouchKey | null => {
 const resetAltarTracking = (): void => {
 	state.altarState.configSignature = '';
 	state.altarState.mode = 'NONE';
+	state.altarState.colossalExpectedFill = 0;
+	state.altarState.colossalEmptiedTotal = 0;
+	state.altarState.colossalRemainingFill = 0;
 	state.altarState.remainingStandardPouches = [];
 	state.altarState.currentBatch = [];
 	state.altarState.currentPouchIndex = 0;
@@ -99,6 +102,34 @@ const tryEmptySelectedPouch = (pouchKey: PouchKey | null): void => {
 			`Pouch ${pouchKey} selected, but non-colossal empty strategy is intentionally left blank for now.`,
 		);
 		return;
+	}
+
+	if (state.altarState.colossalExpectedFill > 0) {
+		if (state.altarState.colossalRemainingFill <= 0) {
+			logInteractWithOuraniaAltar(
+				`Tick ${state.gameTick}: Skipping empty - tracked colossal pouch essence is already fully emptied (${state.altarState.colossalEmptiedTotal}/${state.altarState.colossalExpectedFill}).`,
+			);
+			return;
+		}
+
+		const emptySlots = getInventoryEmptySlotCount();
+		const expectedWithdraw = Math.min(
+			emptySlots,
+			state.altarState.colossalRemainingFill,
+		);
+
+		if (expectedWithdraw <= 0) {
+			logInteractWithOuraniaAltar(
+				`Tick ${state.gameTick}: Skipping empty - no inventory space available for tracked colossal empty progression.`,
+			);
+			return;
+		}
+
+		state.altarState.colossalEmptiedTotal += expectedWithdraw;
+		state.altarState.colossalRemainingFill -= expectedWithdraw;
+		logInteractWithOuraniaAltar(
+			`Tick ${state.gameTick}: Tracked colossal empty progress ${state.altarState.colossalEmptiedTotal}/${state.altarState.colossalExpectedFill} (this empty expects ${expectedWithdraw}).`,
+		);
 	}
 
 	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
@@ -256,7 +287,13 @@ export const InteractWithOuraniaAltar = (): void => {
 	const activePouches = getActivePouchKeysInInventory();
 	const configSignature = activePouches.join('|');
 	if (state.altarState.configSignature !== configSignature) {
+		const carriedColossalFill = state.altarState.colossalExpectedFill;
 		resetAltarTracking();
+		if (carriedColossalFill > 0) {
+			state.altarState.colossalExpectedFill = carriedColossalFill;
+			state.altarState.colossalRemainingFill = carriedColossalFill;
+			state.altarState.colossalEmptiedTotal = 0;
+		}
 		state.altarState.configSignature = configSignature;
 		logInteractWithOuraniaAltar(
 			'Entered altar interaction state. First action will be Craft-rune.',

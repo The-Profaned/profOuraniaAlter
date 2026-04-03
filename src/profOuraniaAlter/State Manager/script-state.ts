@@ -24,6 +24,14 @@ export type RunRestoreOption =
 
 export type PohAccessOption = 'Tablet' | 'Construction Cape' | 'Spellbook Swap';
 
+export type EmergencyFoodOption =
+	| 'Tuna'
+	| 'Lobster'
+	| 'Swordfish'
+	| 'Karambwan'
+	| 'Manta Ray'
+	| 'Shark';
+
 export type StandardPouchKey = 'SMALL' | 'MEDIUM' | 'LARGE' | 'GIANT';
 
 export type PouchKey = StandardPouchKey | 'COLOSSAL';
@@ -62,6 +70,7 @@ export type OuraniaAlterScriptState = State & {
 	};
 	settings: {
 		runesForBanking: RuneOption;
+		emergencyFoodOption: EmergencyFoodOption;
 		pohAccessOption: PohAccessOption;
 		runePouchEnabled: boolean;
 		divinePouchEnabled: boolean;
@@ -72,6 +81,7 @@ export type OuraniaAlterScriptState = State & {
 	};
 	behaviour: {
 		runRestoreOption: RunRestoreOption;
+		emergencyFoodEnabled: boolean;
 		useColossalPouch: boolean;
 		useSmallPouch: boolean;
 		useMediumPouch: boolean;
@@ -109,6 +119,9 @@ export type OuraniaAlterScriptState = State & {
 	altarState: {
 		configSignature: string;
 		mode: AltarPlanMode;
+		colossalExpectedFill: number;
+		colossalEmptiedTotal: number;
+		colossalRemainingFill: number;
 		remainingStandardPouches: StandardPouchKey[];
 		currentBatch: StandardPouchKey[];
 		currentPouchIndex: number;
@@ -169,6 +182,7 @@ export const state: OuraniaAlterScriptState = {
 	},
 	settings: {
 		runesForBanking: 'Air',
+		emergencyFoodOption: 'Lobster',
 		pohAccessOption: 'Tablet',
 		runePouchEnabled: false,
 		divinePouchEnabled: false,
@@ -179,6 +193,7 @@ export const state: OuraniaAlterScriptState = {
 	},
 	behaviour: {
 		runRestoreOption: 'No Restore',
+		emergencyFoodEnabled: false,
 		useColossalPouch: true,
 		useSmallPouch: false,
 		useMediumPouch: false,
@@ -207,6 +222,9 @@ export const state: OuraniaAlterScriptState = {
 	altarState: {
 		configSignature: '',
 		mode: 'NONE',
+		colossalExpectedFill: 0,
+		colossalEmptiedTotal: 0,
+		colossalRemainingFill: 0,
 		remainingStandardPouches: [],
 		currentBatch: [],
 		currentPouchIndex: 0,
