@@ -41,10 +41,14 @@ const POH_ACCESS_OPTIONS: PohAccessOption[] = [
 const EMERGENCY_FOOD_OPTIONS: EmergencyFoodOption[] = [
 	'Tuna',
 	'Lobster',
+	'Bass',
 	'Swordfish',
 	'Karambwan',
 	'Manta Ray',
 	'Shark',
+	'Monkfish',
+	'Sea turtle',
+	'Anglerfish',
 ];
 
 const RUN_RESTORE_OPTIONS: RunRestoreOption[] = [

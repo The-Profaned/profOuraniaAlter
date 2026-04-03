@@ -98,17 +98,13 @@ const tryEmptySelectedPouch = (pouchKey: PouchKey | null): void => {
 	}
 
 	if (pouchKey !== 'COLOSSAL') {
-		logInteractWithOuraniaAltar(
-			`Pouch ${pouchKey} selected, but non-colossal empty strategy is intentionally left blank for now.`,
-		);
 		return;
 	}
 
+	let emptiedEssence = 0;
+
 	if (state.altarState.colossalExpectedFill > 0) {
 		if (state.altarState.colossalRemainingFill <= 0) {
-			logInteractWithOuraniaAltar(
-				`Tick ${state.gameTick}: Skipping empty - tracked colossal pouch essence is already fully emptied (${state.altarState.colossalEmptiedTotal}/${state.altarState.colossalExpectedFill}).`,
-			);
 			return;
 		}
 
@@ -119,26 +115,19 @@ const tryEmptySelectedPouch = (pouchKey: PouchKey | null): void => {
 		);
 
 		if (expectedWithdraw <= 0) {
-			logInteractWithOuraniaAltar(
-				`Tick ${state.gameTick}: Skipping empty - no inventory space available for tracked colossal empty progression.`,
-			);
 			return;
 		}
 
 		state.altarState.colossalEmptiedTotal += expectedWithdraw;
 		state.altarState.colossalRemainingFill -= expectedWithdraw;
-		logInteractWithOuraniaAltar(
-			`Tick ${state.gameTick}: Tracked colossal empty progress ${state.altarState.colossalEmptiedTotal}/${state.altarState.colossalExpectedFill} (this empty expects ${expectedWithdraw}).`,
-		);
+		emptiedEssence = expectedWithdraw;
 	}
 
 	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
 
 	// Guard: ensure pouch items are actually in inventory before attempting interaction.
 	if (pouchItemIds.length === 0) {
-		logError(
-			`Tick ${state.gameTick}: Could not find ${pouchKey} pouch item IDs in inventory. Skipping empty.`,
-		);
+		logError(`Could not find ${pouchKey} pouch item IDs in inventory.`);
 		return;
 	}
 
@@ -157,9 +146,14 @@ const tryEmptySelectedPouch = (pouchKey: PouchKey | null): void => {
 		'<col=ff9040>Colossal pouch</col>',
 	);
 
-	logInteractWithOuraniaAltar(
-		`Tick ${state.gameTick}: XP confirmed, invoked exact Empty CC_OP on ${pouchKey} pouch (itemId=${pouchItemId}).`,
-	);
+	if (state.altarState.colossalExpectedFill > 0) {
+		logInteractWithOuraniaAltar(
+			`Emptied ${emptiedEssence} essence into inventory. Pouch: ${state.altarState.colossalRemainingFill}/${state.altarState.colossalExpectedFill} left.`,
+		);
+		return;
+	}
+
+	logInteractWithOuraniaAltar(`Emptying ${pouchKey} pouch.`);
 };
 
 const ensureStandardPouchPlanInitialized = (): void => {
@@ -189,9 +183,7 @@ const tryEmptyNextStandardPouchInBatch = (): boolean => {
 	const pouchKey = batch[state.altarState.currentPouchIndex];
 	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
 
-	logInteractWithOuraniaAltar(
-		`Tick ${state.gameTick}: Emptying ${pouchKey} pouch (${getCurrentPouchCapacity(pouchKey)} capacity).`,
-	);
+	logInteractWithOuraniaAltar(`Emptying ${pouchKey} pouch.`);
 	bot.inventory.interactWithIds(pouchItemIds, ['Empty']);
 
 	state.altarState.currentPouchIndex += 1;
@@ -222,7 +214,7 @@ const runStandardPouchAltarFlow = (
 		state.altarState.awaitingCraftVerification = true;
 		state.altarState.lastQueuedCraftTick = state.gameTick;
 		logInteractWithOuraniaAltar(
-			`Tick ${state.gameTick}: crafting on ${OBJECT_NAMES.ouraniaAltar} (${inventoryEssence} essence in inventory).`,
+			`Crafting runes on ${OBJECT_NAMES.ouraniaAltar}.`,
 		);
 		return true;
 	}
@@ -252,7 +244,7 @@ const runStandardPouchAltarFlow = (
 		state.altarState.currentBatch = nextBatch;
 		state.altarState.currentPouchIndex = 0;
 		logInteractWithOuraniaAltar(
-			`Tick ${state.gameTick}: Selected standard pouch empty batch ${nextBatch.join(', ')} for ${emptySlots} empty slots.`,
+			`Selected pouch empty batch: ${nextBatch.join(', ')}.`,
 		);
 		return true;
 	}
@@ -271,8 +263,6 @@ const runStandardPouchAltarFlow = (
 };
 
 export const InteractWithOuraniaAltar = (): void => {
-	logInteractWithOuraniaAltar('Interacting with Ourania altar.');
-
 	const ouraniaAltar = bot.objects.getTileObjectsWithIds([
 		OBJECT_IDS.ouraniaAltar,
 	])[0];
@@ -295,39 +285,28 @@ export const InteractWithOuraniaAltar = (): void => {
 			state.altarState.colossalEmptiedTotal = 0;
 		}
 		state.altarState.configSignature = configSignature;
-		logInteractWithOuraniaAltar(
-			'Entered altar interaction state. First action will be Craft-rune.',
-		);
 	}
 
 	const selectedPouch = getActivePouchForNow();
 	const inventoryEssence = getInventoryEssenceCount();
-	logInteractWithOuraniaAltar(
-		`[DEBUG] Tick ${state.gameTick}: essence count = ${inventoryEssence}, awaiting verification = ${state.altarState.awaitingCraftVerification}, selected pouch = ${selectedPouch || 'NULL'}`,
-	);
 
 	if (selectedPouch !== 'COLOSSAL') {
 		runStandardPouchAltarFlow(ouraniaAltar);
 		return;
 	}
 
-	// 1) First actionable step in this state: craft to pull player into altar interaction rhythm.
 	if (!state.altarState.awaitingCraftVerification && inventoryEssence > 0) {
 		bot.objects.interactSuppliedObject(ouraniaAltar, INTERACTIONS.useAltar);
 		state.altarState.awaitingCraftVerification = true;
 		state.altarState.lastQueuedCraftTick = state.gameTick;
 		logInteractWithOuraniaAltar(
-			`Tick ${state.gameTick}: crafting on ${OBJECT_NAMES.ouraniaAltar} (${inventoryEssence} essence in inventory).`,
+			`Crafting runes on ${OBJECT_NAMES.ouraniaAltar}.`,
 		);
 		return;
 	}
 
-	// 2) On the exact tick XP is detected, empty selected pouch (colossal focus).
 	if (state.altarState.awaitingCraftVerification) {
 		const currentXp = getCurrentRunecraftingXp();
-		logInteractWithOuraniaAltar(
-			`[DEBUG XP CHECK] Tick ${state.gameTick}: currentXp=${currentXp}, lastRunecraftXp=${state.altarState.lastRunecraftXp}, will trigger=${currentXp > state.altarState.lastRunecraftXp}`,
-		);
 		if (currentXp > state.altarState.lastRunecraftXp) {
 			state.altarState.lastRunecraftXp = currentXp;
 			state.altarState.awaitingCraftVerification = false;
@@ -338,7 +317,6 @@ export const InteractWithOuraniaAltar = (): void => {
 		return;
 	}
 
-	// 3) If no inventory essence remains and we are not waiting for craft verification, leave altar.
 	if (inventoryEssence <= 0) {
 		logSuccess('No inventory essence remains at altar. Routing onward.');
 		routeAfterCrafting();

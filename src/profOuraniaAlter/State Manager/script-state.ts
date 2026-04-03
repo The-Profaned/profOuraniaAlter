@@ -27,10 +27,14 @@ export type PohAccessOption = 'Tablet' | 'Construction Cape' | 'Spellbook Swap';
 export type EmergencyFoodOption =
 	| 'Tuna'
 	| 'Lobster'
+	| 'Bass'
 	| 'Swordfish'
 	| 'Karambwan'
 	| 'Manta Ray'
-	| 'Shark';
+	| 'Shark'
+	| 'Monkfish'
+	| 'Sea turtle'
+	| 'Anglerfish';
 
 export type StandardPouchKey = 'SMALL' | 'MEDIUM' | 'LARGE' | 'GIANT';
 

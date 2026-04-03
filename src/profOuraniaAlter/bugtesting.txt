@@ -9,8 +9,11 @@ x implimented but testing
 + if no banking runes exist in inventory or pouch (end script and explain issue)
 + npc contact not reading dark mage correctly anymore?
 + just like with filling the pouches, emptying the pouches for crafting should track the same amount of runes 
-- needing a food option incase the player gets stupid unlucky with mobs.
+x needing a food option incase the player gets stupid unlucky with mobs.
     food selection + eat mechanic similar to stamina potion to keep the player moving
+- vile vigour interaction. should trigger to use the restore option when run energy missing = current prayer total 
+    minimum should be 25% run energy 
+- PoH option should trigger restore on 25% run energy
 
 - build a visual ui and not the default on screen for players
     how many essence used 

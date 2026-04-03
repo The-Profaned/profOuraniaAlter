@@ -37,7 +37,6 @@ let hasLoggedBankStateStart = false;
 let hasLoggedOpeningBank = false;
 let hasDepositedInventoryAtBank = false;
 let hasCompletedStaminaPrepAtBank = false;
-let hasCompletedEmergencyFoodPrepAtBank = false;
 let colossalPouchTrackedFill = 0;
 let pendingStandardPouchesToFill: StandardPouchKey[] = [];
 let preFillEssenceCount: number | null = null;
@@ -46,16 +45,27 @@ let hasDonePostPouchFillWithdraw = false;
 const FOOD_OPTION_TO_ITEM_ID = {
 	Tuna: net.runelite.api.ItemID.TUNA,
 	Lobster: net.runelite.api.ItemID.LOBSTER,
+	Bass: net.runelite.api.ItemID.BASS,
 	Swordfish: net.runelite.api.ItemID.SWORDFISH,
+	Monkfish: net.runelite.api.ItemID.MONKFISH,
 	Karambwan: net.runelite.api.ItemID.COOKED_KARAMBWAN,
-	MantaRay: net.runelite.api.ItemID.MANTA_RAY,
 	Shark: net.runelite.api.ItemID.SHARK,
+	MantaRay: net.runelite.api.ItemID.MANTA_RAY,
+	SeaTurtle: net.runelite.api.ItemID.SEA_TURTLE,
+	Anglerfish: net.runelite.api.ItemID.ANGLERFISH,
 } as const;
 
-const getEmergencyFoodLookupKey = (): keyof typeof FOOD_OPTION_TO_ITEM_ID =>
-	state.settings.emergencyFoodOption === 'Manta Ray'
-		? 'MantaRay'
-		: state.settings.emergencyFoodOption;
+const getEmergencyFoodLookupKey = (): keyof typeof FOOD_OPTION_TO_ITEM_ID => {
+	if (state.settings.emergencyFoodOption === 'Manta Ray') {
+		return 'MantaRay';
+	}
+
+	if (state.settings.emergencyFoodOption === 'Sea turtle') {
+		return 'SeaTurtle';
+	}
+
+	return state.settings.emergencyFoodOption;
+};
 
 const resetBankingTracking = (): void => {
 	selectedBankingEssenceId = null;
@@ -63,7 +73,6 @@ const resetBankingTracking = (): void => {
 	hasLoggedOpeningBank = false;
 	hasDepositedInventoryAtBank = false;
 	hasCompletedStaminaPrepAtBank = false;
-	hasCompletedEmergencyFoodPrepAtBank = false;
 	colossalPouchTrackedFill = 0;
 	pendingStandardPouchesToFill = [];
 	preFillEssenceCount = null;
@@ -78,8 +87,8 @@ const isEmergencyFoodHpThresholdMet = (): boolean => {
 	const maxHp = client.getRealSkillLevel(net.runelite.api.Skill.HITPOINTS);
 	if (maxHp <= 0) return false;
 
-	const fortyPercentThreshold = Math.floor(maxHp * 0.4);
-	return currentHp <= fortyPercentThreshold || currentHp < 10;
+	const isAtOrBelowFortyPercent = currentHp * 100 <= maxHp * 40;
+	return isAtOrBelowFortyPercent || currentHp < 10;
 };
 
 const getSelectedEmergencyFoodItemId = (): number =>
@@ -90,37 +99,28 @@ const handleEmergencyFoodPrepBeforeEssenceFill = (): boolean => {
 		return false;
 	}
 
-	if (hasCompletedEmergencyFoodPrepAtBank) {
-		return false;
-	}
-
 	if (!isEmergencyFoodHpThresholdMet()) {
-		hasCompletedEmergencyFoodPrepAtBank = true;
 		return false;
 	}
 
 	const emergencyFoodId = getSelectedEmergencyFoodItemId();
 	if (bot.inventory.containsId(emergencyFoodId)) {
-		logInteractWithBank(
-			'Emergency food already in inventory. Keeping it for travel-to-altar consumption.',
-		);
-		hasCompletedEmergencyFoodPrepAtBank = true;
 		return false;
 	}
 
 	if (bot.bank.getQuantityOfId(emergencyFoodId) <= 0) {
-		logError(
-			`Emergency food enabled and HP is low, but selected food (${state.settings.emergencyFoodOption}) is not in bank.`,
-		);
-		hasCompletedEmergencyFoodPrepAtBank = true;
-		return false;
+		const missingFoodMessage = `Emergency food is enabled and HP is low, but selected food (${state.settings.emergencyFoodOption}) is not in bank. Change emergency food option or disable Emergency Food in the Behaviour tab, then restart the script.`;
+		logError(missingFoodMessage);
+		log.printGameMessage(missingFoodMessage);
+		state.mainState = MainStates.IDLE;
+		bot.terminate();
+		return true;
 	}
 
 	logInteractWithBank(
 		`Emergency food trigger met. Withdrawing one ${state.settings.emergencyFoodOption} for travel-to-altar consumption.`,
 	);
 	bot.bank.withdrawWithId(emergencyFoodId);
-	hasCompletedEmergencyFoodPrepAtBank = true;
 	return true;
 };
 
@@ -384,7 +384,18 @@ export const InteractWithBank = (): void => {
 		logInteractWithBank(
 			`Banking rune low for ${bankingRuneSelection}: total available ${bankingRuneAmountAvailable}. Transitioned substate to ${BANK_SUBSTATE_REFILL_RUNES}.`,
 		);
-		return;
+
+		const shouldContinueForEmergencyFood =
+			state.behaviour.emergencyFoodEnabled &&
+			isEmergencyFoodHpThresholdMet();
+
+		if (!shouldContinueForEmergencyFood) {
+			return;
+		}
+
+		logInteractWithBank(
+			'Emergency food is enabled and HP is low. Continuing bank interaction to allow emergency food withdrawal before leaving bank state.',
+		);
 	}
 
 	if (!bot.bank.isOpen()) {
@@ -415,11 +426,11 @@ export const InteractWithBank = (): void => {
 		return;
 	}
 
-	if (handleStaminaPrepBeforeEssenceFill()) {
+	if (handleEmergencyFoodPrepBeforeEssenceFill()) {
 		return;
 	}
 
-	if (handleEmergencyFoodPrepBeforeEssenceFill()) {
+	if (handleStaminaPrepBeforeEssenceFill()) {
 		return;
 	}
 

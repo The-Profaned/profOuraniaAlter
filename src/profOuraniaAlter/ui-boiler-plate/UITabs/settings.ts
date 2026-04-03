@@ -30,10 +30,14 @@ const POH_ACCESS_OPTIONS: string[] = [
 const EMERGENCY_FOOD_OPTIONS: EmergencyFoodOption[] = [
 	'Tuna',
 	'Lobster',
+	'Bass',
 	'Swordfish',
+	'Monkfish',
 	'Karambwan',
-	'Manta Ray',
 	'Shark',
+	'Manta Ray',
+	'Sea turtle',
+	'Anglerfish',
 ];
 
 const getSelectedRune = (comboBox: javax.swing.JComboBox): RuneOption =>

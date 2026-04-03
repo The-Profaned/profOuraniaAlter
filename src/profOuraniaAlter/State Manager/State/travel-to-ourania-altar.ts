@@ -12,16 +12,27 @@ const STAMINA_POTION_IDS_LOW_TO_HIGH: number[] = [
 const FOOD_OPTION_TO_ITEM_ID = {
 	Tuna: net.runelite.api.ItemID.TUNA,
 	Lobster: net.runelite.api.ItemID.LOBSTER,
+	Bass: net.runelite.api.ItemID.BASS,
 	Swordfish: net.runelite.api.ItemID.SWORDFISH,
 	Karambwan: net.runelite.api.ItemID.COOKED_KARAMBWAN,
 	MantaRay: net.runelite.api.ItemID.MANTA_RAY,
 	Shark: net.runelite.api.ItemID.SHARK,
+	Monkfish: net.runelite.api.ItemID.MONKFISH,
+	SeaTurtle: net.runelite.api.ItemID.SEA_TURTLE,
+	Anglerfish: net.runelite.api.ItemID.ANGLERFISH,
 } as const;
 
-const getEmergencyFoodLookupKey = (): keyof typeof FOOD_OPTION_TO_ITEM_ID =>
-	state.settings.emergencyFoodOption === 'Manta Ray'
-		? 'MantaRay'
-		: state.settings.emergencyFoodOption;
+const getEmergencyFoodLookupKey = (): keyof typeof FOOD_OPTION_TO_ITEM_ID => {
+	if (state.settings.emergencyFoodOption === 'Manta Ray') {
+		return 'MantaRay';
+	}
+
+	if (state.settings.emergencyFoodOption === 'Sea turtle') {
+		return 'SeaTurtle';
+	}
+
+	return state.settings.emergencyFoodOption;
+};
 
 let hasConsumedStaminaDuringTravel = false;
 let hasConsumedEmergencyFoodDuringTravel = false;
@@ -33,8 +44,8 @@ const isEmergencyFoodHpThresholdMet = (): boolean => {
 	const maxHp = client.getRealSkillLevel(net.runelite.api.Skill.HITPOINTS);
 	if (maxHp <= 0) return false;
 
-	const fortyPercentThreshold = Math.floor(maxHp * 0.4);
-	return currentHp <= fortyPercentThreshold || currentHp < 10;
+	const isAtOrBelowFortyPercent = currentHp * 100 <= maxHp * 40;
+	return isAtOrBelowFortyPercent || currentHp < 10;
 };
 
 const maybeConsumeEmergencyFoodDuringTravel = (): boolean => {
@@ -52,8 +63,7 @@ const maybeConsumeEmergencyFoodDuringTravel = (): boolean => {
 		return false;
 	}
 
-	const selectedFoodId =
-		FOOD_OPTION_TO_ITEM_ID[getEmergencyFoodLookupKey()];
+	const selectedFoodId = FOOD_OPTION_TO_ITEM_ID[getEmergencyFoodLookupKey()];
 	if (!bot.inventory.containsId(selectedFoodId)) {
 		hasConsumedEmergencyFoodDuringTravel = true;
 		return false;
