@@ -183,23 +183,69 @@ export const getActiveDegradedPouchIds = (): number[] => {
 export const anyPouchDegraded = (): boolean =>
 	getActiveDegradedPouchIds().length > 0;
 
-const NPC_CONTACT_SPELL_WIDGET_ID = 14286959;
+const NPC_CONTACT_SPELL_WIDGET_IDS = [14286962, 14286959];
+const NPC_CONTACT_WIDGET_GROUP_ID = NPC_CONTACT_SPELL_WIDGET_IDS[0] >> 16;
 
+/* eslint-disable unicorn/prefer-string-replace-all */
 const normalizeActionText = (value: string): string =>
-	value
-		.replaceAll(/<[^>]*>/g, '')
-		.replaceAll('\u00A0', ' ')
-		.replaceAll(/[^\d\sA-Za-z]/g, ' ')
-		.replaceAll(/\s+/g, ' ')
+	String(value)
+		.replace(/<[^>]*>/g, '')
+		.replace(/\u00A0/g, ' ')
+		.replace(/[^\d\sA-Za-z]/g, ' ')
+		.replace(/\s+/g, ' ')
 		.trim()
 		.toLowerCase();
+/* eslint-enable unicorn/prefer-string-replace-all */
+
+const getNormalizedWidgetActions = (
+	packedWidgetId: number,
+): string[] | null => {
+	const widget = client.getWidget(packedWidgetId);
+	if (!widget) return null;
+
+	const actions = widget.getActions?.();
+	if (!actions || actions.length === 0) return null;
+
+	const normalizedActions: string[] = [];
+	for (const action of actions) {
+		if (action == null) continue;
+		normalizedActions.push(String(action));
+	}
+
+	if (normalizedActions.length === 0) return null;
+	return normalizedActions;
+};
+
+const getNpcContactSpellActions = (): string[] | null => {
+	for (const packedWidgetId of NPC_CONTACT_SPELL_WIDGET_IDS) {
+		const directActions = getNormalizedWidgetActions(packedWidgetId);
+		if (directActions) return directActions;
+	}
+
+	for (let childId = 0; childId <= 250; childId += 1) {
+		const packedWidgetId = (NPC_CONTACT_WIDGET_GROUP_ID << 16) | childId;
+		const actions = getNormalizedWidgetActions(packedWidgetId);
+		if (!actions || actions.length <= 1) continue;
+
+		const hasDarkMageAction = actions.some((action) => {
+			const normalized = normalizeActionText(action);
+			return (
+				normalized.includes('dark mage') ||
+				normalized.includes('darkmage')
+			);
+		});
+
+		if (hasDarkMageAction) {
+			return actions;
+		}
+	}
+
+	return null;
+};
 
 export const getNpcContactSecondActionText = (): string | null => {
 	try {
-		const widget = client.getWidget(NPC_CONTACT_SPELL_WIDGET_ID);
-		if (!widget) return null;
-
-		const actions = widget.getActions?.();
+		const actions = getNpcContactSpellActions();
 		if (!actions || actions.length <= 1) return null;
 
 		const secondAction = actions[1];
@@ -212,13 +258,20 @@ export const getNpcContactSecondActionText = (): string | null => {
 };
 
 export const getDarkMageNpcContactMenuIndex = (): number => {
-	const secondActionOption = getNpcContactSecondActionText();
-	if (!secondActionOption) return -1;
+	const actions = getNpcContactSpellActions();
+	if (!actions) return -1;
 
-	const normalizedOption = normalizeActionText(secondActionOption);
-	const isDarkMageSecondAction = normalizedOption.includes('dark mage');
+	for (const [index, action] of actions.entries()) {
+		if (index <= 0) continue;
 
-	if (!isDarkMageSecondAction) return -1;
+		const normalizedOption = normalizeActionText(action);
+		if (
+			normalizedOption.includes('dark mage') ||
+			normalizedOption.includes('darkmage')
+		) {
+			return index;
+		}
+	}
 
-	return 1;
+	return -1;
 };

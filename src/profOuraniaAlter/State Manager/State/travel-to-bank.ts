@@ -51,6 +51,7 @@ const transitionAfterBankArrival = (): void => {
 	logTravelToBank(
 		'Bank arrival complete. Transitioning to bank interaction.',
 	);
+	bot.breakHandler.setBreakHandlerStatus(true);
 	state.mainState = MainStates.INTERACT_WITH_BANK;
 };
 

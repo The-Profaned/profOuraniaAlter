@@ -1,5 +1,6 @@
 import { createPanel } from '../../../imports/ui-helper-functions.js';
 import {
+	type EmergencyFoodOption,
 	state,
 	type PohAccessOption,
 	type RuneOption,
@@ -26,6 +27,19 @@ const POH_ACCESS_OPTIONS: string[] = [
 	'Spellbook Swap',
 ];
 
+const EMERGENCY_FOOD_OPTIONS: EmergencyFoodOption[] = [
+	'Tuna',
+	'Lobster',
+	'Bass',
+	'Swordfish',
+	'Monkfish',
+	'Karambwan',
+	'Shark',
+	'Manta Ray',
+	'Sea turtle',
+	'Anglerfish',
+];
+
 const getSelectedRune = (comboBox: javax.swing.JComboBox): RuneOption =>
 	String(comboBox.getSelectedItem()) as RuneOption;
 
@@ -41,11 +55,13 @@ const getRuneSelectionValue = (selection: RuneSelectionOption): RuneOption =>
 type SettingsLayoutState = {
 	showPohAccess: boolean;
 	showRunePouchOptions: boolean;
+	showEmergencyFood: boolean;
 };
 
 type SettingsTabController = {
 	panel: javax.swing.JPanel;
 	setPohAccessVisible: (visible: boolean) => void;
+	setEmergencyFoodVisible: (visible: boolean) => void;
 };
 
 export const createSettingsTab = (
@@ -61,6 +77,7 @@ export const createSettingsTab = (
 		onLayoutChange?.({
 			showPohAccess: pohAccessRow.isVisible(),
 			showRunePouchOptions: runePouchOptionsPanel.isVisible(),
+			showEmergencyFood: emergencyFoodRow.isVisible(),
 		});
 	};
 
@@ -77,6 +94,28 @@ export const createSettingsTab = (
 		persistUiPreferencesFromState();
 	});
 	runesForBankingRow.add(runesForBankingSelect);
+
+	const emergencyFoodRow = new javax.swing.JPanel(
+		new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0),
+	);
+	emergencyFoodRow.add(new javax.swing.JLabel('Emergency Food:'));
+	const emergencyFoodSelect = new javax.swing.JComboBox(
+		EMERGENCY_FOOD_OPTIONS as unknown as string[],
+	);
+	emergencyFoodSelect.setSelectedItem(state.settings.emergencyFoodOption);
+	emergencyFoodSelect.addActionListener(() => {
+		state.settings.emergencyFoodOption = String(
+			emergencyFoodSelect.getSelectedItem(),
+		) as EmergencyFoodOption;
+		persistUiPreferencesFromState();
+	});
+	emergencyFoodRow.add(emergencyFoodSelect);
+	emergencyFoodRow.setAlignmentX(0);
+	emergencyFoodRow.setMaximumSize(new java.awt.Dimension(10000, 30));
+	emergencyFoodRow.setVisible(state.behaviour.emergencyFoodEnabled);
+
+	const emergencyFoodSpacer = javax.swing.Box.createVerticalStrut(8);
+	emergencyFoodSpacer.setVisible(state.behaviour.emergencyFoodEnabled);
 
 	const pohAccessRow = new javax.swing.JPanel(
 		new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 0),
@@ -291,12 +330,22 @@ export const createSettingsTab = (
 		notifyLayoutChange();
 	};
 
+	const setEmergencyFoodVisible = (visible: boolean): void => {
+		emergencyFoodRow.setVisible(visible);
+		emergencyFoodSpacer.setVisible(visible);
+		panel.revalidate();
+		panel.repaint();
+		notifyLayoutChange();
+	};
+
 	runePouchRow.add(rockerPanel);
 	runePouchRow.add(javax.swing.Box.createHorizontalStrut(10));
 	runePouchRow.add(divinePouchCheck);
 
 	panel.add(runesForBankingRow);
 	panel.add(javax.swing.Box.createVerticalStrut(8));
+	panel.add(emergencyFoodRow);
+	panel.add(emergencyFoodSpacer);
 	panel.add(pohAccessRow);
 	panel.add(pohAccessSpacer);
 	panel.add(runePouchRow);
@@ -308,5 +357,6 @@ export const createSettingsTab = (
 	return {
 		panel,
 		setPohAccessVisible,
+		setEmergencyFoodVisible,
 	};
 };

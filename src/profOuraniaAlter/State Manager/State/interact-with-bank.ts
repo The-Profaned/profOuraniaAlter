@@ -12,6 +12,7 @@ import {
 import { getTotalRuneAmountAvailable } from '../rune-pouch-varbits.js';
 import {
 	getActiveStandardPouchKeysInInventory,
+	chooseBestStandardPouchBatch,
 	getCurrentPouchCapacity,
 	getPouchInventoryItemIds,
 } from '../pouch-utils.js';
@@ -25,12 +26,15 @@ const DEPOSIT_INVENTORY_WIDGET_OPCODE = 57;
 const DEPOSIT_INVENTORY_WIDGET_PARAM0 = -1;
 const BANK_OPEN_INVENTORY_WIDGET_ID = 983043;
 const FILL_ACTION_IDENTIFIER = 9;
-const STAMINA_POTION_IDS_LOW_TO_HIGH: number[] = [
-	net.runelite.api.ItemID.STAMINA_POTION1,
-	net.runelite.api.ItemID.STAMINA_POTION2,
-	net.runelite.api.ItemID.STAMINA_POTION3,
-	net.runelite.api.ItemID.STAMINA_POTION4,
-];
+const STAMINA_POTION_ORDER_LOW_TO_HIGH = [
+	{ dose: 1, itemId: net.runelite.api.ItemID.STAMINA_POTION1 },
+	{ dose: 2, itemId: net.runelite.api.ItemID.STAMINA_POTION2 },
+	{ dose: 3, itemId: net.runelite.api.ItemID.STAMINA_POTION3 },
+	{ dose: 4, itemId: net.runelite.api.ItemID.STAMINA_POTION4 },
+] as const;
+
+const STAMINA_POTION_IDS_LOW_TO_HIGH: number[] =
+	STAMINA_POTION_ORDER_LOW_TO_HIGH.map((entry) => entry.itemId);
 
 let selectedBankingEssenceId: number | null = null;
 let hasLoggedBankStateStart = false;
@@ -39,8 +43,43 @@ let hasDepositedInventoryAtBank = false;
 let hasCompletedStaminaPrepAtBank = false;
 let colossalPouchTrackedFill = 0;
 let pendingStandardPouchesToFill: StandardPouchKey[] = [];
+let hasInitializedStandardPouchPlan = false;
+let currentStandardPouchBatch: StandardPouchKey[] = [];
+let currentStandardPouchBatchIndex = 0;
 let preFillEssenceCount: number | null = null;
 let hasDonePostPouchFillWithdraw = false;
+
+const STANDARD_POUCH_MENU_TARGET: Record<StandardPouchKey, string> = {
+	SMALL: '<col=ff9040>Small pouch</col>',
+	MEDIUM: '<col=ff9040>Medium pouch</col>',
+	LARGE: '<col=ff9040>Large pouch</col>',
+	GIANT: '<col=ff9040>Giant pouch</col>',
+};
+
+const FOOD_OPTION_TO_ITEM_ID = {
+	Tuna: net.runelite.api.ItemID.TUNA,
+	Lobster: net.runelite.api.ItemID.LOBSTER,
+	Bass: net.runelite.api.ItemID.BASS,
+	Swordfish: net.runelite.api.ItemID.SWORDFISH,
+	Monkfish: net.runelite.api.ItemID.MONKFISH,
+	Karambwan: net.runelite.api.ItemID.COOKED_KARAMBWAN,
+	Shark: net.runelite.api.ItemID.SHARK,
+	MantaRay: net.runelite.api.ItemID.MANTA_RAY,
+	SeaTurtle: net.runelite.api.ItemID.SEA_TURTLE,
+	Anglerfish: net.runelite.api.ItemID.ANGLERFISH,
+} as const;
+
+const getEmergencyFoodLookupKey = (): keyof typeof FOOD_OPTION_TO_ITEM_ID => {
+	if (state.settings.emergencyFoodOption === 'Manta Ray') {
+		return 'MantaRay';
+	}
+
+	if (state.settings.emergencyFoodOption === 'Sea turtle') {
+		return 'SeaTurtle';
+	}
+
+	return state.settings.emergencyFoodOption;
+};
 
 const resetBankingTracking = (): void => {
 	selectedBankingEssenceId = null;
@@ -50,24 +89,61 @@ const resetBankingTracking = (): void => {
 	hasCompletedStaminaPrepAtBank = false;
 	colossalPouchTrackedFill = 0;
 	pendingStandardPouchesToFill = [];
+	hasInitializedStandardPouchPlan = false;
+	currentStandardPouchBatch = [];
+	currentStandardPouchBatchIndex = 0;
 	preFillEssenceCount = null;
 	hasDonePostPouchFillWithdraw = false;
 	state.workflowStep = 0;
 };
 
+const isEmergencyFoodHpThresholdMet = (): boolean => {
+	const currentHp = client.getBoostedSkillLevel(
+		net.runelite.api.Skill.HITPOINTS,
+	);
+	const maxHp = client.getRealSkillLevel(net.runelite.api.Skill.HITPOINTS);
+	if (maxHp <= 0) return false;
+
+	const isAtOrBelowFortyPercent = currentHp * 100 <= maxHp * 40;
+	return isAtOrBelowFortyPercent || currentHp < 10;
+};
+
+const getSelectedEmergencyFoodItemId = (): number =>
+	FOOD_OPTION_TO_ITEM_ID[getEmergencyFoodLookupKey()];
+
+const handleEmergencyFoodPrepBeforeEssenceFill = (): boolean => {
+	if (!state.behaviour.emergencyFoodEnabled) {
+		return false;
+	}
+
+	if (!isEmergencyFoodHpThresholdMet()) {
+		return false;
+	}
+
+	const emergencyFoodId = getSelectedEmergencyFoodItemId();
+	if (bot.inventory.containsId(emergencyFoodId)) {
+		return false;
+	}
+
+	if (bot.bank.getQuantityOfId(emergencyFoodId) <= 0) {
+		const missingFoodMessage = `Emergency food is enabled and HP is low, but selected food (${state.settings.emergencyFoodOption}) is not in bank. Change emergency food option or disable Emergency Food in the Behaviour tab, then restart the script.`;
+		logError(missingFoodMessage);
+		log.printGameMessage(missingFoodMessage);
+		state.mainState = MainStates.IDLE;
+		bot.terminate();
+		return true;
+	}
+
+	logInteractWithBank(
+		`Emergency food trigger met. Withdrawing one ${state.settings.emergencyFoodOption} for travel-to-altar consumption.`,
+	);
+	bot.bank.withdrawWithId(emergencyFoodId);
+	return true;
+};
+
 const getRunEnergyPercent = (): number => {
 	const rawRunEnergy = Number(client.getEnergy());
 	return rawRunEnergy > 100 ? Math.floor(rawRunEnergy / 100) : rawRunEnergy;
-};
-
-const getPreferredStaminaPotionIdInBank = (): number | null => {
-	for (const potionId of STAMINA_POTION_IDS_LOW_TO_HIGH) {
-		if (bot.bank.getQuantityOfId(potionId) > 0) {
-			return potionId;
-		}
-	}
-
-	return null;
 };
 
 const handleStaminaPrepBeforeEssenceFill = (): boolean => {
@@ -93,19 +169,29 @@ const handleStaminaPrepBeforeEssenceFill = (): boolean => {
 		return false;
 	}
 
-	const staminaPotionId = getPreferredStaminaPotionIdInBank();
-	if (staminaPotionId === null) {
-		logError(
-			`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions found in bank.`,
+	for (const staminaDoseOption of STAMINA_POTION_ORDER_LOW_TO_HIGH) {
+		const availableInBank = bot.bank.getQuantityOfId(
+			staminaDoseOption.itemId,
 		);
+		if (availableInBank <= 0) {
+			continue;
+		}
+
+		logInteractWithBank(
+			`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%. Withdrawing one ${staminaDoseOption.dose}-dose stamina potion (item ${staminaDoseOption.itemId}) for travel-to-altar consumption.`,
+		);
+		bot.bank.withdrawWithId(staminaDoseOption.itemId);
 		hasCompletedStaminaPrepAtBank = true;
-		return false;
+		return true;
 	}
 
-	logInteractWithBank(
-		`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%. Withdrawing one stamina potion dose item (${staminaPotionId}) to consume during travel.`,
+	logError(
+		`Run energy ${runEnergyPercent}% below threshold ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions found in bank after checking doses in order: 1-dose, 2-dose, 3-dose, 4-dose.`,
 	);
-	bot.bank.withdrawWithId(staminaPotionId);
+	const missingStaminaMessage = `Run restore is set to Stamina Potions and run energy is below ${RUN_ENERGY_ROUTE_TO_BANK_THRESHOLD}%, but no stamina potions were found in bank. Add stamina potions or change Run Restore option, then restart the script.`;
+	log.printGameMessage(missingStaminaMessage);
+	state.mainState = MainStates.IDLE;
+	bot.terminate();
 	hasCompletedStaminaPrepAtBank = true;
 	return true;
 };
@@ -128,8 +214,24 @@ const getInventoryEssenceCount = (): number =>
 	bot.inventory.getQuantityOfId(PURE_ESSENCE_ID) +
 	bot.inventory.getQuantityOfId(DAEYALT_ESSENCE_ID);
 
+const hasNoInventoryEmptySlots = (): boolean =>
+	bot.inventory.getEmptySlots() === 0;
+
+const verifyFinalInventoryFill = (selectedEssenceId: number): boolean => {
+	if (hasNoInventoryEmptySlots()) {
+		return true;
+	}
+
+	const emptySlots = bot.inventory.getEmptySlots();
+	logInteractWithBank(
+		`Final withdraw verification failed: ${emptySlots} empty slot(s) remain. Retrying withdraw-all Essence.`,
+	);
+	bot.bank.withdrawAllWithId(selectedEssenceId);
+	return false;
+};
+
 const initializePendingStandardPouches = (): void => {
-	if (pendingStandardPouchesToFill.length > 0) {
+	if (hasInitializedStandardPouchPlan) {
 		return;
 	}
 
@@ -137,17 +239,66 @@ const initializePendingStandardPouches = (): void => {
 		(left, right) =>
 			getCurrentPouchCapacity(right) - getCurrentPouchCapacity(left),
 	);
+	hasInitializedStandardPouchPlan = true;
+};
+
+const getInventorySlotIndexForItemId = (itemId: number): number | null => {
+	const inventoryContainer = client.getItemContainer(93);
+	if (!inventoryContainer) {
+		return null;
+	}
+
+	const items = inventoryContainer.getItems();
+	for (const [slot, item] of items.entries()) {
+		if (item && item.getId() === itemId) {
+			return slot;
+		}
+	}
+
+	return null;
 };
 
 const fillStandardPouchFromInventory = (pouchKey: StandardPouchKey): void => {
 	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
-	bot.inventory.interactWithIds(pouchItemIds, ['Fill']);
+	const pouchItemIdInInventory =
+		pouchItemIds.find((itemId) => bot.inventory.containsId(itemId)) ?? null;
+
+	if (pouchItemIdInInventory === null) {
+		logError(
+			`Could not find ${pouchKey} pouch in inventory while attempting bank Fill interaction.`,
+		);
+		return;
+	}
+
+	const inventorySlotIndex = getInventorySlotIndexForItemId(
+		pouchItemIdInInventory,
+	);
+	if (inventorySlotIndex === null) {
+		logError(
+			`Could not resolve inventory slot for ${pouchKey} pouch item ${pouchItemIdInInventory}.`,
+		);
+		return;
+	}
+
+	bot.menuAction(
+		inventorySlotIndex,
+		BANK_OPEN_INVENTORY_WIDGET_ID,
+		net.runelite.api.MenuAction.CC_OP,
+		FILL_ACTION_IDENTIFIER,
+		pouchItemIdInInventory,
+		0,
+		'Fill',
+		STANDARD_POUCH_MENU_TARGET[pouchKey],
+	);
 };
 
 const handleStandardPouchBanking = (selectedEssenceId: number): boolean => {
 	initializePendingStandardPouches();
 
-	if (pendingStandardPouchesToFill.length === 0) {
+	if (
+		pendingStandardPouchesToFill.length === 0 &&
+		currentStandardPouchBatch.length === 0
+	) {
 		if (!hasDonePostPouchFillWithdraw) {
 			logInteractWithBank(
 				'Withdrawing-all Essence for final inventory fill.',
@@ -157,35 +308,79 @@ const handleStandardPouchBanking = (selectedEssenceId: number): boolean => {
 			return true;
 		}
 
+		if (!verifyFinalInventoryFill(selectedEssenceId)) {
+			return true;
+		}
+
 		logInteractWithBank(
 			'Banking complete. Transitioning to travel to Ourania altar.',
 		);
+		state.altarState.colossalExpectedFill = 0;
+		state.altarState.colossalEmptiedTotal = 0;
+		state.altarState.colossalRemainingFill = 0;
 		resetBankingTracking();
 		state.mainState = MainStates.TRAVEL_TO_OURANIA_ALTAR;
 		return true;
 	}
 
 	const inventoryEssence = getInventoryEssenceCount();
-	const fillablePouch = pendingStandardPouchesToFill.find(
-		(pouchKey) => inventoryEssence >= getCurrentPouchCapacity(pouchKey),
-	);
 
-	if (fillablePouch) {
-		const pouchCapacity = getCurrentPouchCapacity(fillablePouch);
+	if (currentStandardPouchBatchIndex >= currentStandardPouchBatch.length) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
+	}
+
+	if (currentStandardPouchBatch.length === 0) {
+		const nextBatch = chooseBestStandardPouchBatch(
+			pendingStandardPouchesToFill,
+			inventoryEssence,
+		);
+
+		if (nextBatch.length === 0) {
+			logInteractWithBank(
+				`Withdrawing-all Essence to continue standard pouch fill plan. Remaining pouches: ${pendingStandardPouchesToFill.join(', ')}.`,
+			);
+			bot.bank.withdrawAllWithId(selectedEssenceId);
+			return true;
+		}
+
+		currentStandardPouchBatch = nextBatch;
+		currentStandardPouchBatchIndex = 0;
 		logInteractWithBank(
-			`Filling ${fillablePouch} pouch (${pouchCapacity} capacity) with ${inventoryEssence} essence in inventory.`,
+			`Selected standard pouch batch for ${inventoryEssence} essence: ${nextBatch.join(', ')}.`,
 		);
-		fillStandardPouchFromInventory(fillablePouch);
-		pendingStandardPouchesToFill = pendingStandardPouchesToFill.filter(
-			(pouchKey) => pouchKey !== fillablePouch,
-		);
+	}
+
+	const selectedBatchPouch =
+		currentStandardPouchBatch[currentStandardPouchBatchIndex] ?? null;
+
+	if (selectedBatchPouch === null) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
+		return true;
+	}
+
+	const pouchCapacity = getCurrentPouchCapacity(selectedBatchPouch);
+	if (inventoryEssence < pouchCapacity) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
 		return true;
 	}
 
 	logInteractWithBank(
-		`Withdrawing-all Essence to continue standard pouch fill plan. Pending pouches: ${pendingStandardPouchesToFill.join(', ')}.`,
+		`Filling ${selectedBatchPouch} pouch (${pouchCapacity} capacity) with ${inventoryEssence} essence in inventory.`,
 	);
-	bot.bank.withdrawAllWithId(selectedEssenceId);
+	fillStandardPouchFromInventory(selectedBatchPouch);
+	pendingStandardPouchesToFill = pendingStandardPouchesToFill.filter(
+		(pouchKey) => pouchKey !== selectedBatchPouch,
+	);
+	currentStandardPouchBatchIndex += 1;
+
+	if (currentStandardPouchBatchIndex >= currentStandardPouchBatch.length) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
+	}
+
 	return true;
 };
 
@@ -253,6 +448,8 @@ const resolveSelectedEssenceId = (): number => {
 };
 
 export const InteractWithBank = (): void => {
+	bot.breakHandler.setBreakHandlerStatus(false);
+
 	if (!hasLoggedBankStateStart) {
 		logInteractWithBank('Interacting with bank.');
 		hasLoggedBankStateStart = true;
@@ -279,12 +476,31 @@ export const InteractWithBank = (): void => {
 	const bankingRuneSelection = state.settings.runesForBanking;
 	const bankingRuneAmountAvailable =
 		getTotalRuneAmountAvailable(bankingRuneSelection);
+	if (bankingRuneAmountAvailable <= 0) {
+		const missingRuneMessage = `No ${bankingRuneSelection} runes were found in inventory or rune pouch. Please fix your inventory/rune pouch setup, then restart the script.`;
+		logError(missingRuneMessage);
+		log.printGameMessage(missingRuneMessage);
+		bot.terminate();
+		return;
+	}
+
 	if (bankingRuneAmountAvailable <= BANKING_RUNE_MINIMUM_THRESHOLD) {
 		state.subState = BANK_SUBSTATE_REFILL_RUNES;
 		logInteractWithBank(
 			`Banking rune low for ${bankingRuneSelection}: total available ${bankingRuneAmountAvailable}. Transitioned substate to ${BANK_SUBSTATE_REFILL_RUNES}.`,
 		);
-		return;
+
+		const shouldContinueForEmergencyFood =
+			state.behaviour.emergencyFoodEnabled &&
+			isEmergencyFoodHpThresholdMet();
+
+		if (!shouldContinueForEmergencyFood) {
+			return;
+		}
+
+		logInteractWithBank(
+			'Emergency food is enabled and HP is low. Continuing bank interaction to allow emergency food withdrawal before leaving bank state.',
+		);
 	}
 
 	if (!bot.bank.isOpen()) {
@@ -312,6 +528,10 @@ export const InteractWithBank = (): void => {
 			DEPOSIT_INVENTORY_WIDGET_PARAM0,
 		);
 		hasDepositedInventoryAtBank = true;
+		return;
+	}
+
+	if (handleEmergencyFoodPrepBeforeEssenceFill()) {
 		return;
 	}
 
@@ -354,9 +574,16 @@ export const InteractWithBank = (): void => {
 			return;
 		}
 
+		if (!verifyFinalInventoryFill(selectedEssenceId)) {
+			return;
+		}
+
 		logInteractWithBank(
 			'Banking complete. Transitioning to travel to Ourania altar.',
 		);
+		state.altarState.colossalExpectedFill = colossalPouchTrackedFill;
+		state.altarState.colossalEmptiedTotal = 0;
+		state.altarState.colossalRemainingFill = colossalPouchTrackedFill;
 		resetBankingTracking();
 		state.mainState = MainStates.TRAVEL_TO_OURANIA_ALTAR;
 		return;

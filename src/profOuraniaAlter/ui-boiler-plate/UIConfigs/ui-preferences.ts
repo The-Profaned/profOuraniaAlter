@@ -1,4 +1,5 @@
 import {
+	type EmergencyFoodOption,
 	MainStates,
 	state,
 	type PohAccessOption,
@@ -35,6 +36,19 @@ const POH_ACCESS_OPTIONS: PohAccessOption[] = [
 	'Tablet',
 	'Construction Cape',
 	'Spellbook Swap',
+];
+
+const EMERGENCY_FOOD_OPTIONS: EmergencyFoodOption[] = [
+	'Tuna',
+	'Lobster',
+	'Bass',
+	'Swordfish',
+	'Karambwan',
+	'Manta Ray',
+	'Shark',
+	'Monkfish',
+	'Sea turtle',
+	'Anglerfish',
 ];
 
 const RUN_RESTORE_OPTIONS: RunRestoreOption[] = [
@@ -80,6 +94,10 @@ export const loadUiPreferencesIntoState = (): void => {
 		getKey('behaviour.useColossalPouch'),
 		state.behaviour.useColossalPouch,
 	);
+	state.behaviour.emergencyFoodEnabled = getCache().getBoolean(
+		getKey('behaviour.emergencyFoodEnabled'),
+		state.behaviour.emergencyFoodEnabled,
+	);
 	state.behaviour.useSmallPouch = getCache().getBoolean(
 		getKey('behaviour.useSmallPouch'),
 		state.behaviour.useSmallPouch,
@@ -101,6 +119,11 @@ export const loadUiPreferencesIntoState = (): void => {
 		'settings.runesForBanking',
 		state.settings.runesForBanking,
 		RUNE_OPTIONS,
+	);
+	state.settings.emergencyFoodOption = readEnumValue(
+		'settings.emergencyFoodOption',
+		state.settings.emergencyFoodOption,
+		EMERGENCY_FOOD_OPTIONS,
 	);
 	state.settings.pohAccessOption = readEnumValue(
 		'settings.pohAccessOption',
@@ -157,6 +180,10 @@ export const persistUiPreferencesFromState = (): void => {
 		state.behaviour.useColossalPouch,
 	);
 	getCache().saveBoolean(
+		getKey('behaviour.emergencyFoodEnabled'),
+		state.behaviour.emergencyFoodEnabled,
+	);
+	getCache().saveBoolean(
 		getKey('behaviour.useSmallPouch'),
 		state.behaviour.useSmallPouch,
 	);
@@ -176,6 +203,10 @@ export const persistUiPreferencesFromState = (): void => {
 	saveCachedString(
 		'settings.runesForBanking',
 		state.settings.runesForBanking,
+	);
+	saveCachedString(
+		'settings.emergencyFoodOption',
+		state.settings.emergencyFoodOption,
 	);
 	saveCachedString(
 		'settings.pohAccessOption',

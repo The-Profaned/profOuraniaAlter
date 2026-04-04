@@ -13,6 +13,7 @@ import { persistUiPreferencesFromState } from '../UIConfigs/ui-preferences.js';
 export const createBehaviourTab = (
 	onPouchVisibilityChange?: (showPouchSelection: boolean) => void,
 	onRunRestoreOptionChange?: (runRestoreOption: RunRestoreOption) => void,
+	onEmergencyFoodToggle?: (enabled: boolean) => void,
 ): javax.swing.JPanel => {
 	const panel = createPanel(
 		'BoxLayout',
@@ -109,6 +110,17 @@ export const createBehaviourTab = (
 	colossalPouchCheck.setEnabled(canUseColossal);
 	state.behaviour.useColossalPouch = colossalPouchCheck.isSelected();
 	colossalRow.add(colossalPouchCheck);
+
+	const emergencyFoodCheck = new javax.swing.JCheckBox(
+		'Emergency Food',
+		state.behaviour.emergencyFoodEnabled,
+	);
+	emergencyFoodCheck.addActionListener(() => {
+		state.behaviour.emergencyFoodEnabled = emergencyFoodCheck.isSelected();
+		persistUiPreferencesFromState();
+		onEmergencyFoodToggle?.(state.behaviour.emergencyFoodEnabled);
+	});
+	colossalRow.add(emergencyFoodCheck);
 
 	const pouchSelectionPanel = new javax.swing.JPanel(
 		new java.awt.GridLayout(2, 2, 8, 8),
@@ -235,6 +247,7 @@ export const createBehaviourTab = (
 	});
 
 	onPouchVisibilityChange?.(showPouchSelectionOnStartup);
+	onEmergencyFoodToggle?.(state.behaviour.emergencyFoodEnabled);
 
 	panel.add(row1);
 	panel.add(javax.swing.Box.createVerticalStrut(4));
