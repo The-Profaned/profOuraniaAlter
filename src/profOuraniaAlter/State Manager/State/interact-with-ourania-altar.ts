@@ -8,6 +8,7 @@ import {
 	MainStates,
 	state,
 	type PouchKey,
+	type StandardPouchKey,
 	getRunRestoreTargetState,
 } from '../script-state.js';
 import {
@@ -25,6 +26,16 @@ const ESSENCE_ITEM_IDS: number[] = [
 
 const MAGIC_LEVEL_FOR_HOUSE_TELEPORT = 96;
 const WORKFLOW_STEP_PENDING_POH_MAGIC_SWAP = 90;
+const INVENTORY_WIDGET_ID = 9764864;
+const EMPTY_ACTION_IDENTIFIER = 2;
+let hasInitializedStandardPouchPlan = false;
+
+const STANDARD_POUCH_EMPTY_MENU_TARGET: Record<StandardPouchKey, string> = {
+	SMALL: '<col=ff9040>Small pouch</col>',
+	MEDIUM: '<col=ff9040>Medium pouch</col>',
+	LARGE: '<col=ff9040>Large pouch</col>',
+	GIANT: '<col=ff9040>Giant pouch</col>',
+};
 
 const getInventoryEssenceCount = (): number =>
 	bot.inventory.getQuantityOfAllIds(ESSENCE_ITEM_IDS);
@@ -33,6 +44,22 @@ const getCurrentRunecraftingXp = (): number =>
 	client.getSkillExperience(net.runelite.api.Skill.RUNECRAFT);
 
 const getInventoryEmptySlotCount = (): number => bot.inventory.getEmptySlots();
+
+const getInventorySlotIndexForItemId = (itemId: number): number | null => {
+	const inventoryContainer = client.getItemContainer(93);
+	if (!inventoryContainer) {
+		return null;
+	}
+
+	const items = inventoryContainer.getItems();
+	for (const [slot, item] of items.entries()) {
+		if (item && item.getId() === itemId) {
+			return slot;
+		}
+	}
+
+	return null;
+};
 
 const getActivePouchForNow = (): PouchKey | null => {
 	const activePouches = getActivePouchKeysInInventory();
@@ -61,6 +88,7 @@ const resetAltarTracking = (): void => {
 	state.altarState.craftVerificationRetries = 0;
 	state.altarState.colossalNoXpCycles = 0;
 	state.altarState.lastRunecraftXp = getCurrentRunecraftingXp();
+	hasInitializedStandardPouchPlan = false;
 };
 
 const routeAfterCrafting = (): void => {
@@ -134,12 +162,19 @@ const tryEmptySelectedPouch = (pouchKey: PouchKey | null): void => {
 	const pouchItemId =
 		pouchItemIds.find((itemId) => bot.inventory.containsId(itemId)) ??
 		pouchItemIds[0];
+	const inventorySlotIndex = getInventorySlotIndexForItemId(pouchItemId);
+	if (inventorySlotIndex === null) {
+		logError(
+			`Could not resolve inventory slot for ${pouchKey} pouch item ${pouchItemId}.`,
+		);
+		return;
+	}
 
 	bot.menuAction(
-		0,
-		9764864,
+		inventorySlotIndex,
+		INVENTORY_WIDGET_ID,
 		net.runelite.api.MenuAction.CC_OP,
-		2,
+		EMPTY_ACTION_IDENTIFIER,
 		pouchItemId,
 		0,
 		'Empty',
@@ -157,7 +192,7 @@ const tryEmptySelectedPouch = (pouchKey: PouchKey | null): void => {
 };
 
 const ensureStandardPouchPlanInitialized = (): void => {
-	if (state.altarState.remainingStandardPouches.length > 0) {
+	if (hasInitializedStandardPouchPlan) {
 		return;
 	}
 
@@ -166,6 +201,7 @@ const ensureStandardPouchPlanInitialized = (): void => {
 			(left, right) =>
 				getCurrentPouchCapacity(right) - getCurrentPouchCapacity(left),
 		);
+	hasInitializedStandardPouchPlan = true;
 };
 
 const tryEmptyNextStandardPouchInBatch = (): boolean => {
@@ -182,9 +218,37 @@ const tryEmptyNextStandardPouchInBatch = (): boolean => {
 
 	const pouchKey = batch[state.altarState.currentPouchIndex];
 	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
+	const pouchItemIdInInventory =
+		pouchItemIds.find((itemId) => bot.inventory.containsId(itemId)) ?? null;
+
+	if (pouchItemIdInInventory === null) {
+		logError(
+			`Could not find ${pouchKey} pouch in inventory while attempting altar Empty interaction.`,
+		);
+		return false;
+	}
+
+	const inventorySlotIndex = getInventorySlotIndexForItemId(
+		pouchItemIdInInventory,
+	);
+	if (inventorySlotIndex === null) {
+		logError(
+			`Could not resolve inventory slot for ${pouchKey} pouch item ${pouchItemIdInInventory}.`,
+		);
+		return false;
+	}
 
 	logInteractWithOuraniaAltar(`Emptying ${pouchKey} pouch.`);
-	bot.inventory.interactWithIds(pouchItemIds, ['Empty']);
+	bot.menuAction(
+		inventorySlotIndex,
+		INVENTORY_WIDGET_ID,
+		net.runelite.api.MenuAction.CC_OP,
+		EMPTY_ACTION_IDENTIFIER,
+		pouchItemIdInInventory,
+		0,
+		'Empty',
+		STANDARD_POUCH_EMPTY_MENU_TARGET[pouchKey],
+	);
 
 	state.altarState.currentPouchIndex += 1;
 	if (state.altarState.currentPouchIndex >= batch.length) {

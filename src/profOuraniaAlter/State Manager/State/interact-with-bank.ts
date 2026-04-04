@@ -12,6 +12,7 @@ import {
 import { getTotalRuneAmountAvailable } from '../rune-pouch-varbits.js';
 import {
 	getActiveStandardPouchKeysInInventory,
+	chooseBestStandardPouchBatch,
 	getCurrentPouchCapacity,
 	getPouchInventoryItemIds,
 } from '../pouch-utils.js';
@@ -42,8 +43,18 @@ let hasDepositedInventoryAtBank = false;
 let hasCompletedStaminaPrepAtBank = false;
 let colossalPouchTrackedFill = 0;
 let pendingStandardPouchesToFill: StandardPouchKey[] = [];
+let hasInitializedStandardPouchPlan = false;
+let currentStandardPouchBatch: StandardPouchKey[] = [];
+let currentStandardPouchBatchIndex = 0;
 let preFillEssenceCount: number | null = null;
 let hasDonePostPouchFillWithdraw = false;
+
+const STANDARD_POUCH_MENU_TARGET: Record<StandardPouchKey, string> = {
+	SMALL: '<col=ff9040>Small pouch</col>',
+	MEDIUM: '<col=ff9040>Medium pouch</col>',
+	LARGE: '<col=ff9040>Large pouch</col>',
+	GIANT: '<col=ff9040>Giant pouch</col>',
+};
 
 const FOOD_OPTION_TO_ITEM_ID = {
 	Tuna: net.runelite.api.ItemID.TUNA,
@@ -78,6 +89,9 @@ const resetBankingTracking = (): void => {
 	hasCompletedStaminaPrepAtBank = false;
 	colossalPouchTrackedFill = 0;
 	pendingStandardPouchesToFill = [];
+	hasInitializedStandardPouchPlan = false;
+	currentStandardPouchBatch = [];
+	currentStandardPouchBatchIndex = 0;
 	preFillEssenceCount = null;
 	hasDonePostPouchFillWithdraw = false;
 	state.workflowStep = 0;
@@ -217,7 +231,7 @@ const verifyFinalInventoryFill = (selectedEssenceId: number): boolean => {
 };
 
 const initializePendingStandardPouches = (): void => {
-	if (pendingStandardPouchesToFill.length > 0) {
+	if (hasInitializedStandardPouchPlan) {
 		return;
 	}
 
@@ -225,17 +239,66 @@ const initializePendingStandardPouches = (): void => {
 		(left, right) =>
 			getCurrentPouchCapacity(right) - getCurrentPouchCapacity(left),
 	);
+	hasInitializedStandardPouchPlan = true;
+};
+
+const getInventorySlotIndexForItemId = (itemId: number): number | null => {
+	const inventoryContainer = client.getItemContainer(93);
+	if (!inventoryContainer) {
+		return null;
+	}
+
+	const items = inventoryContainer.getItems();
+	for (const [slot, item] of items.entries()) {
+		if (item && item.getId() === itemId) {
+			return slot;
+		}
+	}
+
+	return null;
 };
 
 const fillStandardPouchFromInventory = (pouchKey: StandardPouchKey): void => {
 	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
-	bot.inventory.interactWithIds(pouchItemIds, ['Fill']);
+	const pouchItemIdInInventory =
+		pouchItemIds.find((itemId) => bot.inventory.containsId(itemId)) ?? null;
+
+	if (pouchItemIdInInventory === null) {
+		logError(
+			`Could not find ${pouchKey} pouch in inventory while attempting bank Fill interaction.`,
+		);
+		return;
+	}
+
+	const inventorySlotIndex = getInventorySlotIndexForItemId(
+		pouchItemIdInInventory,
+	);
+	if (inventorySlotIndex === null) {
+		logError(
+			`Could not resolve inventory slot for ${pouchKey} pouch item ${pouchItemIdInInventory}.`,
+		);
+		return;
+	}
+
+	bot.menuAction(
+		inventorySlotIndex,
+		BANK_OPEN_INVENTORY_WIDGET_ID,
+		net.runelite.api.MenuAction.CC_OP,
+		FILL_ACTION_IDENTIFIER,
+		pouchItemIdInInventory,
+		0,
+		'Fill',
+		STANDARD_POUCH_MENU_TARGET[pouchKey],
+	);
 };
 
 const handleStandardPouchBanking = (selectedEssenceId: number): boolean => {
 	initializePendingStandardPouches();
 
-	if (pendingStandardPouchesToFill.length === 0) {
+	if (
+		pendingStandardPouchesToFill.length === 0 &&
+		currentStandardPouchBatch.length === 0
+	) {
 		if (!hasDonePostPouchFillWithdraw) {
 			logInteractWithBank(
 				'Withdrawing-all Essence for final inventory fill.',
@@ -261,26 +324,63 @@ const handleStandardPouchBanking = (selectedEssenceId: number): boolean => {
 	}
 
 	const inventoryEssence = getInventoryEssenceCount();
-	const fillablePouch = pendingStandardPouchesToFill.find(
-		(pouchKey) => inventoryEssence >= getCurrentPouchCapacity(pouchKey),
-	);
 
-	if (fillablePouch) {
-		const pouchCapacity = getCurrentPouchCapacity(fillablePouch);
+	if (currentStandardPouchBatchIndex >= currentStandardPouchBatch.length) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
+	}
+
+	if (currentStandardPouchBatch.length === 0) {
+		const nextBatch = chooseBestStandardPouchBatch(
+			pendingStandardPouchesToFill,
+			inventoryEssence,
+		);
+
+		if (nextBatch.length === 0) {
+			logInteractWithBank(
+				`Withdrawing-all Essence to continue standard pouch fill plan. Remaining pouches: ${pendingStandardPouchesToFill.join(', ')}.`,
+			);
+			bot.bank.withdrawAllWithId(selectedEssenceId);
+			return true;
+		}
+
+		currentStandardPouchBatch = nextBatch;
+		currentStandardPouchBatchIndex = 0;
 		logInteractWithBank(
-			`Filling ${fillablePouch} pouch (${pouchCapacity} capacity) with ${inventoryEssence} essence in inventory.`,
+			`Selected standard pouch batch for ${inventoryEssence} essence: ${nextBatch.join(', ')}.`,
 		);
-		fillStandardPouchFromInventory(fillablePouch);
-		pendingStandardPouchesToFill = pendingStandardPouchesToFill.filter(
-			(pouchKey) => pouchKey !== fillablePouch,
-		);
+	}
+
+	const selectedBatchPouch =
+		currentStandardPouchBatch[currentStandardPouchBatchIndex] ?? null;
+
+	if (selectedBatchPouch === null) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
+		return true;
+	}
+
+	const pouchCapacity = getCurrentPouchCapacity(selectedBatchPouch);
+	if (inventoryEssence < pouchCapacity) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
 		return true;
 	}
 
 	logInteractWithBank(
-		`Withdrawing-all Essence to continue standard pouch fill plan. Pending pouches: ${pendingStandardPouchesToFill.join(', ')}.`,
+		`Filling ${selectedBatchPouch} pouch (${pouchCapacity} capacity) with ${inventoryEssence} essence in inventory.`,
 	);
-	bot.bank.withdrawAllWithId(selectedEssenceId);
+	fillStandardPouchFromInventory(selectedBatchPouch);
+	pendingStandardPouchesToFill = pendingStandardPouchesToFill.filter(
+		(pouchKey) => pouchKey !== selectedBatchPouch,
+	);
+	currentStandardPouchBatchIndex += 1;
+
+	if (currentStandardPouchBatchIndex >= currentStandardPouchBatch.length) {
+		currentStandardPouchBatch = [];
+		currentStandardPouchBatchIndex = 0;
+	}
+
 	return true;
 };
 
