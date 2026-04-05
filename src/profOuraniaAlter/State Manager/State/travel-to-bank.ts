@@ -12,6 +12,13 @@ const OURANIA_TELEPORT_REGION_ID = 9778;
 const LADDER_RETRY_TICKS = 24;
 const SPELLBOOK_VARBIT_ID = 4070;
 const LUNAR_SPELLBOOK_VALUE = 2;
+const STARTUP_VERIFY_AT_BANK_WORKFLOW_STEP = 98;
+const STARTUP_WEBWALK_TO_BANK_WORKFLOW_STEP = 99;
+const STARTUP_BANK_WEBWALK_TARGET = new net.runelite.api.coords.WorldPoint(
+	3015,
+	5629,
+	0,
+);
 
 let lastLadderClickTick = -1;
 let hasLoggedTravelStart = false;
@@ -34,7 +41,10 @@ const isOnLunarSpellbook = (): boolean =>
 	client.getVarbitValue(SPELLBOOK_VARBIT_ID) === LUNAR_SPELLBOOK_VALUE;
 
 const transitionAfterBankArrival = (): void => {
-	state.workflowStep = 0;
+	state.workflowStep =
+		state.workflowStep === STARTUP_WEBWALK_TO_BANK_WORKFLOW_STEP
+			? STARTUP_VERIFY_AT_BANK_WORKFLOW_STEP
+			: 0;
 	lastLadderClickTick = -1;
 	resetTravelToBankLogState();
 
@@ -69,6 +79,16 @@ export const TravelToBank = (): void => {
 
 	if (WORLD_POINTS.bankArea.contains(playerLocation)) {
 		transitionAfterBankArrival();
+		return;
+	}
+
+	if (state.workflowStep === STARTUP_WEBWALK_TO_BANK_WORKFLOW_STEP) {
+		if (!bot.walking.isWebWalking()) {
+			logTravelToBank(
+				'Script start sync: webwalking to Ourania bank area before bank interaction.',
+			);
+			bot.walking.webWalkStart(STARTUP_BANK_WEBWALK_TARGET);
+		}
 		return;
 	}
 

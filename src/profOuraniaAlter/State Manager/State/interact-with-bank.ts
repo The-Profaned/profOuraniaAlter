@@ -11,12 +11,13 @@ import {
 } from '../constants.js';
 import { getTotalRuneAmountAvailable } from '../rune-pouch-varbits.js';
 import {
+	getActivePouchKeysInInventory,
 	getActiveStandardPouchKeysInInventory,
 	chooseBestStandardPouchBatch,
 	getCurrentPouchCapacity,
 	getPouchInventoryItemIds,
 } from '../pouch-utils.js';
-import type { StandardPouchKey } from '../script-state.js';
+import type { PouchKey, StandardPouchKey } from '../script-state.js';
 
 const PURE_ESSENCE_ID = net.runelite.api.ItemID.PURE_ESSENCE;
 const DAEYALT_ESSENCE_ID = net.runelite.api.ItemID.DAEYALT_ESSENCE;
@@ -26,6 +27,7 @@ const DEPOSIT_INVENTORY_WIDGET_OPCODE = 57;
 const DEPOSIT_INVENTORY_WIDGET_PARAM0 = -1;
 const BANK_OPEN_INVENTORY_WIDGET_ID = 983043;
 const FILL_ACTION_IDENTIFIER = 9;
+const STARTUP_VERIFY_AT_BANK_WORKFLOW_STEP = 98;
 const STAMINA_POTION_ORDER_LOW_TO_HIGH = [
 	{ dose: 1, itemId: net.runelite.api.ItemID.STAMINA_POTION1 },
 	{ dose: 2, itemId: net.runelite.api.ItemID.STAMINA_POTION2 },
@@ -48,6 +50,10 @@ let currentStandardPouchBatch: StandardPouchKey[] = [];
 let currentStandardPouchBatchIndex = 0;
 let preFillEssenceCount: number | null = null;
 let hasDonePostPouchFillWithdraw = false;
+let startupPouchesToVerify: PouchKey[] = [];
+let startupPouchVerifyIndex = 0;
+let startupPouchVerifyIssuedTick = -1;
+let startupPouchVerifyEmptySlotsBefore: number | null = null;
 
 const STANDARD_POUCH_MENU_TARGET: Record<StandardPouchKey, string> = {
 	SMALL: '<col=ff9040>Small pouch</col>',
@@ -55,6 +61,8 @@ const STANDARD_POUCH_MENU_TARGET: Record<StandardPouchKey, string> = {
 	LARGE: '<col=ff9040>Large pouch</col>',
 	GIANT: '<col=ff9040>Giant pouch</col>',
 };
+
+const COLOSSAL_POUCH_MENU_TARGET = '<col=ff9040>Colossal pouch</col>';
 
 const FOOD_OPTION_TO_ITEM_ID = {
 	Tuna: net.runelite.api.ItemID.TUNA,
@@ -94,7 +102,18 @@ const resetBankingTracking = (): void => {
 	currentStandardPouchBatchIndex = 0;
 	preFillEssenceCount = null;
 	hasDonePostPouchFillWithdraw = false;
+	startupPouchesToVerify = [];
+	startupPouchVerifyIndex = 0;
+	startupPouchVerifyIssuedTick = -1;
+	startupPouchVerifyEmptySlotsBefore = null;
 	state.workflowStep = 0;
+};
+
+const clearStartupPouchVerificationTracking = (): void => {
+	startupPouchesToVerify = [];
+	startupPouchVerifyIndex = 0;
+	startupPouchVerifyIssuedTick = -1;
+	startupPouchVerifyEmptySlotsBefore = null;
 };
 
 const isEmergencyFoodHpThresholdMet = (): boolean => {
@@ -290,6 +309,125 @@ const fillStandardPouchFromInventory = (pouchKey: StandardPouchKey): void => {
 		'Fill',
 		STANDARD_POUCH_MENU_TARGET[pouchKey],
 	);
+};
+
+const getFillMenuTargetForPouch = (pouchKey: PouchKey): string =>
+	pouchKey === 'COLOSSAL'
+		? COLOSSAL_POUCH_MENU_TARGET
+		: STANDARD_POUCH_MENU_TARGET[pouchKey];
+
+const tryFillPouchViaBankWidget = (pouchKey: PouchKey): boolean => {
+	const pouchItemIds = getPouchInventoryItemIds(pouchKey);
+	const pouchItemIdInInventory =
+		pouchItemIds.find((itemId) => bot.inventory.containsId(itemId)) ?? null;
+
+	if (pouchItemIdInInventory === null) {
+		logError(
+			`Could not find ${pouchKey} pouch in inventory during startup verification.`,
+		);
+		return false;
+	}
+
+	const inventorySlotIndex = getInventorySlotIndexForItemId(
+		pouchItemIdInInventory,
+	);
+	if (inventorySlotIndex === null) {
+		logError(
+			`Could not resolve inventory slot for ${pouchKey} pouch item ${pouchItemIdInInventory} during startup verification.`,
+		);
+		return false;
+	}
+
+	bot.menuAction(
+		inventorySlotIndex,
+		BANK_OPEN_INVENTORY_WIDGET_ID,
+		net.runelite.api.MenuAction.CC_OP,
+		FILL_ACTION_IDENTIFIER,
+		pouchItemIdInInventory,
+		0,
+		'Fill',
+		getFillMenuTargetForPouch(pouchKey),
+	);
+	return true;
+};
+
+const handleStartupBankVerification = (): boolean => {
+	if (startupPouchesToVerify.length === 0) {
+		startupPouchesToVerify = getActivePouchKeysInInventory().sort(
+			(left, right) =>
+				getCurrentPouchCapacity(right) - getCurrentPouchCapacity(left),
+		);
+	}
+
+	if (startupPouchesToVerify.length === 0) {
+		logInteractWithBank(
+			'Startup verification: no pouches found in inventory. Continuing with normal banking setup.',
+		);
+		clearStartupPouchVerificationTracking();
+		state.workflowStep = 0;
+		return false;
+	}
+
+	if (
+		!hasNoInventoryEmptySlots() ||
+		getInventoryEssenceCount() <= 0 ||
+		startupPouchVerifyIndex >= startupPouchesToVerify.length
+	) {
+		logInteractWithBank(
+			'Startup verification: inventory/pouch setup not fully ready. Continuing with normal banking setup.',
+		);
+		clearStartupPouchVerificationTracking();
+		state.workflowStep = 0;
+		return false;
+	}
+
+	const pouchKeyToVerify = startupPouchesToVerify[startupPouchVerifyIndex];
+	if (startupPouchVerifyIssuedTick < 0) {
+		startupPouchVerifyEmptySlotsBefore = bot.inventory.getEmptySlots();
+		if (!tryFillPouchViaBankWidget(pouchKeyToVerify)) {
+			clearStartupPouchVerificationTracking();
+			state.workflowStep = 0;
+			return false;
+		}
+
+		logInteractWithBank(
+			`Startup verification: probing ${pouchKeyToVerify} pouch with Fill action.`,
+		);
+		startupPouchVerifyIssuedTick = state.gameTick;
+		return true;
+	}
+
+	if (state.gameTick - startupPouchVerifyIssuedTick < 1) {
+		return true;
+	}
+
+	const emptySlotsBefore = startupPouchVerifyEmptySlotsBefore ?? 0;
+	const currentEmptySlots = bot.inventory.getEmptySlots();
+
+	startupPouchVerifyIssuedTick = -1;
+	startupPouchVerifyEmptySlotsBefore = null;
+
+	if (currentEmptySlots > emptySlotsBefore) {
+		logInteractWithBank(
+			`Startup verification: ${pouchKeyToVerify} accepted Fill and freed inventory slots. Treating startup load as not ready and continuing with normal banking setup.`,
+		);
+		clearStartupPouchVerificationTracking();
+		state.workflowStep = 0;
+		return false;
+	}
+
+	startupPouchVerifyIndex += 1;
+	if (startupPouchVerifyIndex < startupPouchesToVerify.length) {
+		return true;
+	}
+
+	logInteractWithBank(
+		'Startup verification complete: all configured pouches behaved as full with full essence inventory. Proceeding directly to Ourania altar.',
+	);
+	clearStartupPouchVerificationTracking();
+	resetBankingTracking();
+	state.mainState = MainStates.TRAVEL_TO_OURANIA_ALTAR;
+	return true;
 };
 
 const handleStandardPouchBanking = (selectedEssenceId: number): boolean => {
@@ -515,6 +653,13 @@ export const InteractWithBank = (): void => {
 	hasLoggedOpeningBank = false;
 
 	if (bot.bank.isBanking()) {
+		return;
+	}
+
+	if (
+		state.workflowStep === STARTUP_VERIFY_AT_BANK_WORKFLOW_STEP &&
+		handleStartupBankVerification()
+	) {
 		return;
 	}
 

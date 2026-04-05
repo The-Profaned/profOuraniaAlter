@@ -4,8 +4,6 @@ x implimented but testing
 + fixed
 
 + randomly will leave last withdraw of essence and not withdraw. before moving to ourania alter verify inventory is correct.
-- rune pouch handling for non banking rune (if full 16k empty to all but 1)
-- banking rune in rune pouch needs refreshed to 16k when low
 + if no banking runes exist in inventory or pouch (end script and explain issue)
 + npc contact not reading dark mage correctly anymore?
 + just like with filling the pouches, emptying the pouches for crafting should track the same amount of runes 
@@ -15,6 +13,10 @@ x implimented but testing
     minimum should be 25% run energy 
 + PoH option should trigger restore on 25% run energy
 + if selecting stamina potions, stop script when stamina potions run out fully from the bank 
+
+x finish up start states in order to start in any situation
+- rune pouch handling for non banking rune (if full 16k empty to all but 1)
+- banking rune in rune pouch needs refreshed to 16k when low
 
 - build a visual ui and not the default on screen for players
     how many essence used 
