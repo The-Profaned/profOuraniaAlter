@@ -82,10 +82,10 @@ export const stateManager = (): void => {
 		transitionedStates &&
 		startingState === MainStates.INTERACT_WITH_OURANIA_ALTAR
 	) {
-		refreshRunePouchRuntime('after-altar-interaction');
+		refreshRunePouchRuntime();
 	}
 
 	if (transitionedStates && startingState === MainStates.INTERACT_WITH_BANK) {
-		refreshRunePouchRuntime('after-bank-interaction');
+		refreshRunePouchRuntime();
 	}
 };

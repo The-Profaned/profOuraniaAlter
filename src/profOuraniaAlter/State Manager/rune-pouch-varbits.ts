@@ -3,7 +3,6 @@ import {
 	type RuneOption,
 	type RuneSelectionOption,
 } from './script-state.js';
-import { logState } from './logging.js';
 import { BANKING_RUNE_MINIMUM_THRESHOLD } from './constants.js';
 
 export type RunePouchSlot = {
@@ -48,9 +47,7 @@ export const readRunePouchSlots = (slotCount: number): RunePouchSlot[] => {
 	const runePouchContainerId =
 		net.runelite.api.widgets.WidgetInfo.RUNE_POUCH_ITEM_CONTAINER.getPackedId();
 
-	const pouchContainer = client.getItemContainer(
-		runePouchContainerId,
-	);
+	const pouchContainer = client.getItemContainer(runePouchContainerId);
 
 	if (!pouchContainer) {
 		return [];
@@ -116,7 +113,7 @@ const getConfiguredRuneSelections = (): RuneSelectionOption[] => [
 	state.settings.runeSelection4,
 ];
 
-export const refreshRunePouchRuntime = (reason: string): void => {
+export const refreshRunePouchRuntime = (): void => {
 	const configuredSelections = getConfiguredRuneSelections();
 	const slotCount = getConfiguredPouchSlotCount();
 	const shouldTrackPouch = slotCount > 0;
@@ -169,8 +166,4 @@ export const refreshRunePouchRuntime = (reason: string): void => {
 		},
 		slots: evaluatedSlots,
 	};
-
-	logState(
-		`Rune runtime refreshed (${reason}): ready=${String(readyForConfiguredRunes)}, slots=${slotCount}, bankingRune=${bankingRune} total=${bankingRuneTotalAmount}.`,
-	);
 };
