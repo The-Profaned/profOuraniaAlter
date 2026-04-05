@@ -37,7 +37,7 @@ const SETTINGS_TAB_FRAME_SIZE_FOOD_FULL = new java.awt.Dimension(480, 415);
 const BEHAVIOUR_TAB_FRAME_SIZE_COLLAPSED = new java.awt.Dimension(480, 280);
 const BEHAVIOUR_TAB_FRAME_SIZE_EXPANDED = new java.awt.Dimension(480, 380);
 const DEBUG_TAB_FRAME_SIZE = new java.awt.Dimension(480, 330);
-const INFO_TAB_FRAME_SIZE = new java.awt.Dimension(480, 400);
+const INFO_TAB_FRAME_SIZE = new java.awt.Dimension(460, 710);
 
 let showBehaviourPouchSelection = false;
 let showSettingsPohAccess = false;

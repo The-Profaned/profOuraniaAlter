@@ -32,6 +32,8 @@ const logMessage = (source: string, message: string, color: RGB): void => {
 	log.printRGB(fullMessage, color.r, color.g, color.b);
 };
 
+export const getLastScriptAction = (): string => lastLoggedMessage;
+
 export const logOuraniaAlter = (message: string): void => {
 	logMessage('ourania-alter', message, LOG_COLOR.SCRIPT);
 };

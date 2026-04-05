@@ -349,6 +349,31 @@ const hasStartupVerifiedFullLoad = (): boolean => {
 	return true;
 };
 
+const hasStartupVerifiedPouchesOnlyLoad = (): boolean => {
+	const activePouches = getActivePouchKeysInInventory();
+	if (activePouches.length === 0) {
+		return false;
+	}
+
+	for (const pouchKey of activePouches) {
+		const pouchAmount = client.getVarbitValue(
+			POUCH_AMOUNT_VARBITS[pouchKey],
+		);
+		const pouchCapacity = getExpectedStartupPouchCapacity(pouchKey);
+
+		if (pouchCapacity <= 0 || pouchAmount < pouchCapacity) {
+			return false;
+		}
+	}
+
+	return true;
+};
+
+const getStartupSelectedEssenceId = (): number =>
+	bot.bank.getQuantityOfId(DAEYALT_ESSENCE_ID) > 0
+		? DAEYALT_ESSENCE_ID
+		: PURE_ESSENCE_ID;
+
 const handleStartupBankVerification = (): boolean => {
 	if (hasStartupVerifiedFullLoad()) {
 		logInteractWithBank(
@@ -356,6 +381,26 @@ const handleStartupBankVerification = (): boolean => {
 		);
 		resetBankingTracking();
 		state.mainState = MainStates.TRAVEL_TO_OURANIA_ALTAR;
+		return true;
+	}
+
+	if (
+		hasStartupVerifiedPouchesOnlyLoad() &&
+		getInventoryEssenceCount() <= 0
+	) {
+		const selectedEssenceId = getStartupSelectedEssenceId();
+		if (bot.bank.getQuantityOfId(selectedEssenceId) <= 0) {
+			logError(
+				'Startup verification detected full pouch varbits but no essence exists in bank for inventory fill.',
+			);
+			state.workflowStep = 0;
+			return false;
+		}
+
+		logInteractWithBank(
+			'Startup verification detected full pouch varbits with empty inventory essence. Withdrawing-all Essence for startup inventory fill.',
+		);
+		bot.bank.withdrawAllWithId(selectedEssenceId);
 		return true;
 	}
 
