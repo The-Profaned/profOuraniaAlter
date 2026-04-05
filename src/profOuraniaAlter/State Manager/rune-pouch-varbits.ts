@@ -86,15 +86,24 @@ const getConfiguredPouchSlotCount = (): number => {
 	return 0;
 };
 
+const getPouchSlotCountForBankingRead = (): number => {
+	const configuredSlotCount = getConfiguredPouchSlotCount();
+	if (configuredSlotCount > 0) {
+		return configuredSlotCount;
+	}
+
+	// Banking rune checks must still read pouch contents even when UI pouch tracking is disabled.
+	return 6;
+};
+
 export const getRuneAmountInPouch = (rune: RuneOption): number => {
-	const slotCount = getConfiguredPouchSlotCount();
+	const slotCount = getPouchSlotCountForBankingRead();
 	if (slotCount <= 0) return 0;
 
 	const liveSlots = readRunePouchSlots(slotCount);
-	const matchingSlot = liveSlots.find(
-		(slotData) => slotData.runeOption === rune,
-	);
-	return matchingSlot?.amount ?? 0;
+	return liveSlots
+		.filter((slotData) => slotData.runeOption === rune)
+		.reduce((total, slotData) => total + slotData.amount, 0);
 };
 
 export const getRuneAmountInInventory = (rune: RuneOption): number => {

@@ -1,0 +1,29 @@
+__**Ourania Alter Script**__
+
+Everyone gets a __**2-hour free trial**__ to test the script before deciding to purchase.
+
+__**Purchase**__
+https://theplug.runelite.plus/bm_store/author.php?id=420291571662192650
+
+__**Features**__
+- Easy-to-use UI with dynamic feature listings
+- Auto essence and rune pouch detection
+- Multi-pouch configuration setups handled
+- Multiple run restore options: No Restore, Stamina Potions, PoH, Vile Vigour, Desert Amulet
+- Auto start handler
+- Break handling during operation
+- Supports starting at level 25 Runecrafting with no run restore option
+- Emergency food handling
+
+__**Requirements**__
+- Banking runes available in inventory (not in rune pouch)
+- Bank pre-configured for interaction
+- Pure essence or Daeyalt essence in bank
+- Bank on the 'All' tab
+
+__**Setup**__
+- Recommended: use a dust staff (without it, rune usage can be inconsistent)
+- Keep pouches, banking rune, and rune pouch locked in bank slots so they do not get deposited
+- Be on Lunar spellbook
+- Rune pouch start recommendation: 10 Astral, 10 Cosmic, 10 Law
+    - This will prevent them from filling up for 12-14h of runtime (estimates based on level)
