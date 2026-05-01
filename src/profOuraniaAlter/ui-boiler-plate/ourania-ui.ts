@@ -291,7 +291,12 @@ const createStartFrame = (): javax.swing.JFrame => {
 				}
 			},
 			(runRestoreOption) => {
-				settingsTab.setPohAccessVisible(runRestoreOption === 'PoH');
+				settingsTab.setPohAccessVisible(
+					runRestoreOption === 'PoH' ||
+						// LEAGUES_POH_START
+						runRestoreOption === 'Leagues PoH',
+					// LEAGUES_POH_END
+				);
 			},
 			(emergencyFoodEnabled) => {
 				settingsTab.setEmergencyFoodVisible(emergencyFoodEnabled);

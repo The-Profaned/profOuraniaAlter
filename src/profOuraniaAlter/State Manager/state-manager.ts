@@ -6,6 +6,9 @@ import { TravelToOuraniaAltar } from './State/travel-to-ourania-altar.js';
 import { InteractWithOuraniaAltar } from './State/interact-with-ourania-altar.js';
 import { TravelToPrayerAltar } from './State/travel-to-prayer-altar.js';
 import { TravelToPoh } from './State/travel-to-poh.js';
+// LEAGUES_POH_START
+import { TravelToLeaguesPoh } from './State/travel-to-leagues-poh.js';
+// LEAGUES_POH_END
 import { TravelToDesert } from './State/travel-to-desert.js';
 import { SwapMageBook } from './State/swap-mage-book.js';
 import { UsePrayerAltar } from './State/use-prayer-altar.js';
@@ -48,6 +51,12 @@ export const stateManager = (): void => {
 			TravelToPoh();
 			break;
 		}
+		// LEAGUES_POH_START
+		case MainStates.TRAVEL_TO_LEAGUES_POH: {
+			TravelToLeaguesPoh();
+			break;
+		}
+		// LEAGUES_POH_END
 		case MainStates.TRAVEL_TO_DESERT: {
 			TravelToDesert();
 			break;

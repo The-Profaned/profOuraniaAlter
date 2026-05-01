@@ -24,7 +24,7 @@ const RUNE_SELECTION_OPTIONS: string[] = [
 const POH_ACCESS_OPTIONS: string[] = [
 	'Tablet',
 	'Construction Cape',
-	'Spellbook Swap',
+	'Spellbook',
 ];
 
 const EMERGENCY_FOOD_OPTIONS: EmergencyFoodOption[] = [
@@ -132,10 +132,20 @@ export const createSettingsTab = (
 	pohAccessRow.add(pohAccessSelect);
 	pohAccessRow.setAlignmentX(0);
 	pohAccessRow.setMaximumSize(new java.awt.Dimension(10000, 30));
-	pohAccessRow.setVisible(state.behaviour.runRestoreOption === 'PoH');
+	pohAccessRow.setVisible(
+		state.behaviour.runRestoreOption === 'PoH' ||
+			// LEAGUES_POH_START
+			state.behaviour.runRestoreOption === 'Leagues PoH',
+		// LEAGUES_POH_END
+	);
 
 	const pohAccessSpacer = javax.swing.Box.createVerticalStrut(8);
-	pohAccessSpacer.setVisible(state.behaviour.runRestoreOption === 'PoH');
+	pohAccessSpacer.setVisible(
+		state.behaviour.runRestoreOption === 'PoH' ||
+			// LEAGUES_POH_START
+			state.behaviour.runRestoreOption === 'Leagues PoH',
+		// LEAGUES_POH_END
+	);
 
 	const divinePouchCheck = new javax.swing.JCheckBox('Divine Pouch', false);
 	divinePouchCheck.setVisible(false);

@@ -34,7 +34,7 @@ export const SwapMageBook = (): void => {
 
 	if (
 		state.behaviour.runRestoreOption === 'PoH' &&
-		state.settings.pohAccessOption === 'Spellbook Swap' &&
+		state.settings.pohAccessOption === 'Spellbook' &&
 		state.workflowStep === WORKFLOW_STEP_PENDING_POH_MAGIC_SWAP
 	) {
 		try {

@@ -96,21 +96,21 @@ const routeAfterCrafting = (): void => {
 
 	if (
 		state.behaviour.runRestoreOption === 'PoH' &&
-		state.settings.pohAccessOption === 'Spellbook Swap'
+		state.settings.pohAccessOption === 'Spellbook'
 	) {
 		const magicLevel = client.getRealSkillLevel(
 			net.runelite.api.Skill.MAGIC,
 		);
 		if (magicLevel < MAGIC_LEVEL_FOR_HOUSE_TELEPORT) {
 			logError(
-				`PoH access is Spellbook Swap, but Magic level is ${magicLevel}. Requires ${MAGIC_LEVEL_FOR_HOUSE_TELEPORT}.`,
+				`${state.behaviour.runRestoreOption} access is Spellbook, but Magic level is ${magicLevel}. Requires ${MAGIC_LEVEL_FOR_HOUSE_TELEPORT}.`,
 			);
 			state.mainState = MainStates.IDLE;
 			return;
 		}
 
 		logInteractWithOuraniaAltar(
-			'PoH access is Spellbook Swap. Transitioning to SWAP_MAGE_BOOK from altar completion.',
+			`${state.behaviour.runRestoreOption} access is Spellbook. Transitioning to SWAP_MAGE_BOOK from altar completion.`,
 		);
 		state.workflowStep = WORKFLOW_STEP_PENDING_POH_MAGIC_SWAP;
 		state.mainState = MainStates.SWAP_MAGE_BOOK;

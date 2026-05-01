@@ -1,4 +1,4 @@
-import type { State } from '../../imports/types.js';
+﻿import type { State } from '../../imports/types.js';
 import { SCRIPT_NAME, DEFAULT_STATE } from './constants.js';
 
 export type RuneOption =
@@ -19,10 +19,13 @@ export type RunRestoreOption =
 	| 'No Restore'
 	| 'Stamina Potions'
 	| 'PoH'
+	// LEAGUES_POH_START
+	| 'Leagues PoH'
+	// LEAGUES_POH_END
 	| 'Vile Vigour'
 	| 'Desert Amulet';
 
-export type PohAccessOption = 'Tablet' | 'Construction Cape' | 'Spellbook Swap';
+export type PohAccessOption = 'Tablet' | 'Construction Cape' | 'Spellbook';
 
 export type EmergencyFoodOption =
 	| 'Tuna'
@@ -55,6 +58,9 @@ export enum MainStates {
 	INTERACT_WITH_OURANIA_ALTAR = 'INTERACT_WITH_OURANIA_ALTAR',
 	TRAVEL_TO_PRAYER_ALTAR = 'TRAVEL_TO_PRAYER_ALTAR',
 	TRAVEL_TO_POH = 'TRAVEL_TO_POH',
+	// LEAGUES_POH_START
+	TRAVEL_TO_LEAGUES_POH = 'TRAVEL_TO_LEAGUES_POH',
+	// LEAGUES_POH_END
 	TRAVEL_TO_DESERT = 'TRAVEL_TO_DESERT',
 	SWAP_MAGE_BOOK = 'SWAP_MAGE_BOOK',
 	USE_PRAYER_ALTAR = 'USE_PRAYER_ALTAR',
@@ -164,6 +170,11 @@ export const getRunRestoreTargetState = (): MainStates => {
 				? MainStates.TRAVEL_TO_POH
 				: MainStates.TRAVEL_TO_BANK;
 		}
+		// LEAGUES_POH_START
+		case 'Leagues PoH': {
+			return MainStates.TRAVEL_TO_LEAGUES_POH;
+		}
+		// LEAGUES_POH_END
 		case 'Vile Vigour': {
 			return runEnergyPercent < 25 ||
 				missingRunEnergy >= currentPrayerPoints

@@ -13,6 +13,9 @@ const LOG_COLOR = {
 	INTERACT_OURANIA: SHARED_LOG_COLOR.TEAL as RGB,
 	TRAVEL_PRAYER: SHARED_LOG_COLOR.GRAY as RGB,
 	TRAVEL_POH: SHARED_LOG_COLOR.BLUE as RGB,
+	// LEAGUES_POH_START
+	TRAVEL_LEAGUES_POH: SHARED_LOG_COLOR.BLUE as RGB,
+	// LEAGUES_POH_END
 	TRAVEL_DESERT: SHARED_LOG_COLOR.GOLD as RGB,
 	SWAP_MAGE_BOOK: SHARED_LOG_COLOR.BLUE as RGB,
 	USE_PRAYER_ALTAR: SHARED_LOG_COLOR.EMERALD as RGB,
@@ -61,6 +64,12 @@ export const logTravelToPrayerAltar = (message: string): void => {
 export const logTravelToPoh = (message: string): void => {
 	logMessage('travel-poh', message, LOG_COLOR.TRAVEL_POH);
 };
+
+// LEAGUES_POH_START
+export const logTravelToLeaguesPoh = (message: string): void => {
+	logMessage('travel-leagues-poh', message, LOG_COLOR.TRAVEL_LEAGUES_POH);
+};
+// LEAGUES_POH_END
 
 export const logTravelToDesert = (message: string): void => {
 	logMessage('travel-desert', message, LOG_COLOR.TRAVEL_DESERT);

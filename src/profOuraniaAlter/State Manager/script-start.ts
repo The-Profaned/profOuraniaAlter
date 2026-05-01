@@ -17,7 +17,10 @@ export const determineScriptStartLocationState = (): void => {
 	const playerLocation = localPlayer.getWorldLocation();
 	if (!playerLocation) return;
 
-	if (!isOnLunarSpellbook()) {
+	if (
+		state.behaviour.runRestoreOption !== 'Leagues PoH' &&
+		!isOnLunarSpellbook()
+	) {
 		const lunarRequirementMessage =
 			'Script start blocked: Lunar spellbook is required. Switch to Lunar spellbook, then restart the script.';
 		logError(lunarRequirementMessage);

@@ -27,3 +27,9 @@ __**Setup**__
 - Be on Lunar spellbook
 - Rune pouch start recommendation: 10 Astral, 10 Cosmic, 10 Law
     - This will prevent them from filling up for 12-14h of runtime (estimates based on level)
+
+
+0 - 2:40 = normal loop
+2:40 = npc contact
+3:30 = run restore 
+3:30+ = normal loop

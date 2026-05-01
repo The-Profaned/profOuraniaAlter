@@ -26,7 +26,7 @@ export const createInfoTab = (): javax.swing.JPanel => {
 			'Settings Tab\n' +
 			'- Runes For Banking: rune used for bank travel logic\n' +
 			'- Emergency Food: food type used by emergency logic\n' +
-			'- PoH Access: Tablet, Construction Cape, or Spellbook Swap\n' +
+			'- PoH Access: Tablet, Construction Cape, or Spellbook\n' +
 			'- Rune Pouch: enables pouch checks\n' +
 			'- Divine Pouch: enables slot 4 support\n' +
 			'- Slot 1-4 Rune: expected rune in each pouch slot\n\n' +

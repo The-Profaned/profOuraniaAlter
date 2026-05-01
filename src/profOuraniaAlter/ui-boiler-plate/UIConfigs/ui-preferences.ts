@@ -35,7 +35,7 @@ const RUNE_SELECTION_OPTIONS: RuneSelectionOption[] = [...RUNE_OPTIONS, 'na'];
 const POH_ACCESS_OPTIONS: PohAccessOption[] = [
 	'Tablet',
 	'Construction Cape',
-	'Spellbook Swap',
+	'Spellbook',
 ];
 
 const EMERGENCY_FOOD_OPTIONS: EmergencyFoodOption[] = [
@@ -55,6 +55,9 @@ const RUN_RESTORE_OPTIONS: RunRestoreOption[] = [
 	'No Restore',
 	'Stamina Potions',
 	'PoH',
+	// LEAGUES_POH_START
+	'Leagues PoH',
+	// LEAGUES_POH_END
 	'Vile Vigour',
 	'Desert Amulet',
 ];

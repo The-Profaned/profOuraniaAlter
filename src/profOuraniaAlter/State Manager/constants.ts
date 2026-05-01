@@ -4,6 +4,7 @@ export const BANK_SUBSTATE_REFILL_RUNES: string = 'REFILL_BANK_RUNES';
 export const BANKING_RUNE_MINIMUM_THRESHOLD: number = 40;
 
 export const OURANIA_DUNGEON_REGION_ID: number = 12119;
+export const OURANIA_TELEPORT_REGION_ID: number = 9778;
 
 const TARGETS = {
 	banker: {

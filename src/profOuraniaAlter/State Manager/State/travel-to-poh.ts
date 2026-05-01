@@ -162,9 +162,9 @@ export const TravelToPoh = (): void => {
 					state.mainState = MainStates.TRAVEL_TO_BANK;
 					return;
 				}
-				case 'Spellbook Swap': {
+				case 'Spellbook': {
 					logError(
-						'Settings selected Spellbook Swap. This path must enter SWAP_MAGE_BOOK from altar completion before returning to TRAVEL_TO_POH.',
+						'Settings selected Spellbook. This path must enter SWAP_MAGE_BOOK from altar completion before returning to TRAVEL_TO_POH.',
 					);
 					return;
 				}

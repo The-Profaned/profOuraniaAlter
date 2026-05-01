@@ -47,6 +47,9 @@ export const createBehaviourTab = (
 		'No Restore',
 		'Stamina Potions',
 		'PoH',
+		// LEAGUES_POH_START
+		'Leagues PoH',
+		// LEAGUES_POH_END
 	];
 
 	if (hasKingdomDivided) {
